@@ -52,23 +52,23 @@ def get_fin_tool(llm: ChatOpenAI):
         (
             "system",
             # 시스템 역할: LLM에게 "사용자의 query 안에 있는 금융 용어"를 찾아서
-            # FinancialQuery 형식( JSON )으로 응답하라고 지시.
-            f"""You are a financial assistant. 
-        Below is a list of financial terms:
-        {', '.join(financial_dict.keys())}
+            # FinancialQuery 형식(JSON)으로 응답하라고 지시.
+            f"""당신은 금융 보조원입니다.
+아래는 금융 용어 목록입니다:
+{', '.join(financial_dict.keys())}
 
-        Your task:
-        1) Identify which financial terms from the list appear in the user's query.
-        2) If any terms are found, create a 'change' string that replaces (or retains) those terms with their canonical form as listed above.
-        3) Fill out the JSON schema with 'change' (the updated query) and 'terms' (the matched terms).
-        4) If no terms are matched, 'change' can be the original query, and 'terms' can be an empty list.
+당신의 작업:
+1) 사용자 query 안에 이 목록에 나열된 금융 용어가 포함되어 있는지 식별하세요.
+2) 용어가 발견되면, 위에 명시된 정규(canonical) 형태로 대체(또는 유지)하여 'change' 문자열을 만드세요.
+3) 'change'(수정된 쿼리)와 'terms'(일치된 용어들)을 JSON 스키마에 맞춰 작성하세요.
+4) 용어가 전혀 일치하지 않을 경우, 'change'는 원본 query를 그대로 사용하고, 'terms'는 빈 리스트로 두세요.
 
-        Output must follow this JSON schema exactly:
-        {{{{
-        "change": "<the updated or original query>",
-        "terms": ["<matched_term1>", "<matched_term2>", ...]
-        }}}}
-        """
+출력은 다음 JSON 스키마를 반드시 정확히 따라야 합니다:
+{{{{
+    "change": "<수정된 혹은 원본 query>",
+    "terms": ["<일치된_용어1>", "<일치된_용어2>", ...]
+}}}}
+"""
         ),
         ("user", "{query}"),
     ]

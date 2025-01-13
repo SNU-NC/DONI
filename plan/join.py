@@ -40,17 +40,13 @@ def _parse_joiner_output(decision: JoinOutputs) -> Dict[str, Any]:
     if isinstance(decision.action, Replan): 
         return {
             "messages": response + [SystemMessage(content=f"Context from last attempt: {decision.action.feedback}")],
+            "key_information": []
         }
     else:
-
         formatted_response = decision.action.response
-        
-        # key_information이 있다면 State에 추가
-        key_info = decision.action.key_information if hasattr(decision.action, 'key_information') else []
-        
         return {
             "messages": response + [AIMessage(content=formatted_response)],
-            "key_information": key_info  # key_information 포함
+            "key_information": decision.action.key_information if hasattr(decision.action, 'key_information') else []
         }
 
 
@@ -58,17 +54,27 @@ def select_recent_messages(state) -> dict:
     """Select the most recent messages up to the last human message."""
     messages = state["messages"]
     replan_count = state["replan_count"]
-    refference = state["task_results"]
-    print("refference 확인 *************")
-    for ref in refference:
-        print(ref)
+    task_results = state.get("task_results", [])
+    
+    # key_information 수집
+    all_key_information = []
+    for result in task_results:
+        if isinstance(result, dict):
+            if 'result' in result and isinstance(result['result'], dict):
+                if 'key_information' in result['result']:
+                    all_key_information.extend(result['result']['key_information'])
+    
     selected = []
     for msg in messages[::-1]:
         selected.append(msg)
         if isinstance(msg, HumanMessage):
             break
     
-    return {"messages": selected[::-1], "replan_count": replan_count }
+    return {
+        "messages": selected[::-1], 
+        "replan_count": replan_count,
+        "key_information": all_key_information
+    }
 
 
 def check_replan_count(state: dict):
@@ -138,17 +144,33 @@ def create_joiner(llm: BaseChatModel):
     
     # 체인을 쓸지 말지 결정
     def conditional_joiner(state: Dict[str, Any]) -> Dict[str, Any]:
-        report_agent_use = state.get("report_agent_use", False)  # 디폴트: False
-        print("stop_joiner 값은 뭐야 ? ", report_agent_use)
+        report_agent_use = state.get("report_agent_use", False)
+        
+        # task_results에서 key_information 수집 및 중복 제거
+        all_key_information = []
+        seen = set()  # 중복 체크를 위한 set
+        
+        for task in state.get("task_results", []):
+            if isinstance(task, dict) and "result" in task:
+                result = task["result"]
+                if isinstance(result, dict) and "key_information" in result:
+                    for info in result["key_information"]:
+                        # tool, filename, referenced_content를 기준으로 중복 체크
+                        key = (info.get('tool'), info.get('filename'), info.get('referenced_content'))
+                        if key not in seen:
+                            seen.add(key)
+                            all_key_information.append(info)
+        
         if report_agent_use:
-            # 체인을 안 썼을 때 반환할 수 있는 간단한 결과 예시
-            print("체인을 사용하지 않았습니다.")
             return {
                 "messages": [AIMessage(content=state["messages"][-1].content)],
+                "key_information": all_key_information
             }
-        print("chain 씀")
-        # use_joiner가 False라면 실제 체인 실행
-        return chain.invoke(state)
+        
+        result = chain.invoke(state)
+        # key_information 추가
+        result["key_information"] = all_key_information
+        return result
 
     
     return conditional_joiner

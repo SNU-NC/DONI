@@ -32,7 +32,7 @@ class GoogleSearch(SearchEngine):
         self.cx = cx
         self.base_url = "https://www.googleapis.com/customsearch/v1"
     
-    def search(self, query: str) -> str:
+    def search(self, query: str) -> List[dict]:
         params = {
             "q": query,
             "key": self.api_key,
@@ -46,20 +46,21 @@ class GoogleSearch(SearchEngine):
             results = response.json()
             
             if "items" not in results:
-                return "No results found"
+                return []
                 
-            formatted_results = []
-            for idx, item in enumerate(results["items"][:5], 1):
-                formatted_results.append(
-                    f"{idx}. {item.get('title', 'No title')}\n"
-                    f"Link: {item.get('link', 'No link')}\n"
-                    f"Snippet: {item.get('snippet', 'No description')}\n"
-                )
+            search_results = []
+            for item in results["items"][:5]:
+                search_results.append({
+                    "tool": "검색 도구[구글]",
+                    "title": item.get('title', 'No title'),
+                    "link": item.get('link', 'No link'),
+                    "referenced_content": item.get('snippet', 'No description')
+                })
                 
-            return "\n".join(formatted_results)
+            return search_results
             
         except requests.exceptions.RequestException as e:
-            return f"Error occurred while searching Google: {str(e)}"
+            return []
 
 class NaverSearch(SearchEngine):
     """Naver search implementation"""
@@ -69,7 +70,7 @@ class NaverSearch(SearchEngine):
         self.client_secret = client_secret
         self.base_url = "https://openapi.naver.com/v1/search/webkr.json"
     
-    def search(self, query: str) -> str:
+    def search(self, query: str) -> List[dict]:
         headers = {
             "X-Naver-Client-Id": self.client_id,
             "X-Naver-Client-Secret": self.client_secret
@@ -90,23 +91,24 @@ class NaverSearch(SearchEngine):
             results = response.json()
             
             if "items" not in results or not results["items"]:
-                return "No results found"
+                return []
                 
-            formatted_results = []
-            for idx, item in enumerate(results["items"][:5], 1):
+            search_results = []
+            for item in results["items"][:5]:
                 title = item.get("title", "No title").replace("<b>", "").replace("</b>", "")
                 description = item.get("description", "No description").replace("<b>", "").replace("</b>", "")
                 
-                formatted_results.append(
-                    f"{idx}. {title}\n"
-                    f"Link: {item.get('link', 'No link')}\n"
-                    f"Snippet: {description}\n"
-                )
+                search_results.append({
+                    "tool": "검색 도구[네이버]",
+                    "title": title,
+                    "link": item.get('link', 'No link'),
+                    "referenced_content": description
+                })
                 
-            return "\n".join(formatted_results)
+            return search_results
             
         except requests.exceptions.RequestException as e:
-            return f"Error occurred while searching Naver: {str(e)}"
+            return []
 
 
 class WebSearchTools(BaseTool):
@@ -186,18 +188,30 @@ class WebSearchTools(BaseTool):
         
         return [google_tool, naver_tool]
     
-    def _format_results(self, google_results: str, naver_results: str) -> str:
-        return f"""=== Google 검색 결과 ===
-{google_results}
-
-=== Naver 검색 결과 ===
-{naver_results}"""
+    def _format_results(self, google_results: List[dict], naver_results: List[dict]) -> dict:
+        """검색 결과를 구조화된 딕셔너리 형태로 포맷팅"""
+        search_results = {
+            "output": "",
+            "key_information": []
+        }
+        print("google_results:" , google_results, "naver_results:" , naver_results)
+        # 모든 검색 결과 합치기
+        search_results["key_information"] = google_results + naver_results
+        
+        # 전체 출력 텍스트 생성
+        all_contents = []
+        for info in search_results["key_information"]:
+            all_contents.append(f"[{info['title']}] {info['referenced_content']}")
+        
+        search_results["output"] = "\n\n".join(all_contents) if all_contents else "검색 결과를 찾을 수 없습니다."
+        print("search_results:" , search_results)
+        return search_results
 
     def _run(
         self,
         query: str,
         run_manager: Optional[CallbackManagerForToolRun] = None
-    ) -> str:
+    ) -> dict:
         try:
             search_query = query
             

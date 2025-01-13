@@ -71,6 +71,11 @@ class StockAnalyzer:
             )
             company_button.click()
 
+            # 현재 URL에서 종목 코드 추출
+            time.sleep(0.3)  # URL 변경 대기
+            current_url = driver.current_url
+            stock_code = current_url.split('/')[-1]  # URL에서 마지막 부분이 종목 코드
+
             time.sleep(1)
             daily_button = wait.until(
                 EC.element_to_be_clickable((By.XPATH, '//button[@value="일별"]'))
@@ -208,7 +213,8 @@ class StockAnalyzer:
                     "외국인": foreign_negative,
                     "기관": institution_negative,
                     "등락률": df.loc[df["날짜"] == negative_max_date, "등락률"].values[0]
-                } if negative_max_date else None
+                } if negative_max_date else None,
+                "stock_code": stock_code
             }
 
         except Exception as e:
@@ -311,7 +317,7 @@ class StockAnalyzerTool(BaseTool):
     description: str = _STOCK_ANL_DESCRIPTION
     args_schema: Type[BaseModel] = StockAnalyzerInputs
 
-    def _run(self, query: str, company:str, year:int, run_manager: Optional[CallbackManagerForToolRun] = None) -> str:
+    def _run(self, query: str, company:str, year:int, run_manager: Optional[CallbackManagerForToolRun] = None) -> dict:
         try:              
             filter_dict={}
             filter_dict["year"] = year
@@ -323,8 +329,10 @@ class StockAnalyzerTool(BaseTool):
             result = analyzer.analyze_stock(filter_dict["companyName"])
 
             if not result:
-                return "주식 데이터를 수집하거나 분석하는데 실패했습니다."
+                return {"output": "주식 데이터를 수집하거나 분석하는데 실패했습니다."}
 
+            stock_code = result['주식_데이터'].get('stock_code', '')  # 종목 코드 가져오기
+            
             stock_data = result.get('주식_데이터', {})
             news_analysis = {
                 "양수_최대": result.get('양수_최대_분석', "양수 최대 등락률 날짜에 대한 뉴스 분석 결과가 없습니다."),
@@ -366,6 +374,60 @@ class StockAnalyzerTool(BaseTool):
                 f"=== 음수 최대 뉴스 분석 ===\n{news_analysis['음수_최대']}\n"
             )
 
-            return final_str
+            # 통합된 key_information 구성
+            sources = [
+                {
+                    'name': '토스증권',
+                    'type': '주가 및 거래량 데이터',
+                    'url': f"https://tossinvest.com/",
+                    'referenced_dates': []
+                }
+            ]
+
+            # 날짜별 뉴스 소스 추가
+            if positive_stock_data:
+                sources[0]['referenced_dates'].append({
+                    'date': positive_stock_data['날짜'],
+                    'type': '최대 상승일',
+                    'change_rate': positive_stock_data['등락률']
+                })
+                sources.append({
+                    'name': '네이버 뉴스',
+                    'type': '뉴스 데이터 (최대 상승일)',
+                    'date': positive_stock_data['날짜'],
+                    'url': (f"https://search.naver.com/search.naver?"
+                           f"where=news&query={filter_dict['companyName']}&sm=tab_opt&sort=0&photo=0&field=0"
+                           f"&pd=3&ds=2024.{positive_stock_data['날짜']}&de=2024.{positive_stock_data['날짜']}")
+                })
+
+            if negative_stock_data:
+                sources[0]['referenced_dates'].append({
+                    'date': negative_stock_data['날짜'],
+                    'type': '최대 하락일',
+                    'change_rate': negative_stock_data['등락률']
+                })
+                sources.append({
+                    'name': '네이버 뉴스',
+                    'type': '뉴스 데이터 (최대 하락일)',
+                    'date': negative_stock_data['날짜'],
+                    'url': (f"https://search.naver.com/search.naver?"
+                           f"where=news&query={filter_dict['companyName']}&sm=tab_opt&sort=0&photo=0&field=0"
+                           f"&pd=3&ds=2024.{negative_stock_data['날짜']}&de=2024.{negative_stock_data['날짜']}")
+                })
+
+            key_information = []
+            
+            for source in sources:
+                key_information.append({
+                    'tool': f'주가 분석 도구({source.get("name", "N/A")})',
+                    'link': source.get('url', 'N/A'),
+                    'referenced_content': source.get('type', 'N/A'),
+                    'date': source.get('date', 'N/A'),
+                })
+
+            return {
+                'output': final_str,
+                'key_information': key_information
+            }
         except Exception as e:
-            return f"Unexpected error occurred: {e}"
+            return {'output': f"Unexpected error occurred: {e}"}

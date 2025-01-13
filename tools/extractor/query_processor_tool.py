@@ -1,4 +1,4 @@
-from typing import Dict, Tuple, Optional, List
+from typing import Any, Dict, Tuple, Optional, List
 from pydantic import BaseModel, Field
 from langchain_core.language_models import BaseChatModel
 from langchain_core.prompts import ChatPromptTemplate
@@ -256,7 +256,7 @@ class QueryProcessor:
 
         return tagged_query
     
-    def process_query(self, query: str) -> str:
+    def process_query(self, query: str) ->  Dict[str, Any]:
         """쿼리 처리 로직"""
         # 1) 기업명, 연도 추출
         llm_info, info =self.extract_info(query)
@@ -268,8 +268,18 @@ class QueryProcessor:
         print(f"- 추출된 정보: {info}")
         print(f"- 태그된 쿼리: {tagged_query}")
         print("=== 쿼리 처리 완료 ===\n")
+        # metadata 구조에 맞게 변환
+        metadata = {}
+        if "companyNames" in info:
+            metadata["companyName"] = info["companyNames"][0]  # 첫 번째 회사만 사용
         
-        return tagged_query
+        print("metadata:", metadata)
+           
+        # 딕셔너리 형태로 반환
+        return {
+            "input_query": tagged_query,
+            "metadata": metadata
+        }
 
 def get_query_processor_tool(llm: BaseChatModel, llm_clova: BaseChatModel) -> StructuredTool:
     processor = QueryProcessor(llm, llm_clova)

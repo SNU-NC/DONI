@@ -28,8 +28,12 @@ class ReportAgentTool(BaseTool):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.report_agent = ReportAgentManager()
 
-    def _run(self, query: str, company_name: str = "삼성전자", run_manager: Optional[CallbackManagerForToolRun] = None) -> str:
+    def _run(self, query: str, metadata: Dict[str, Any], run_manager: Optional[CallbackManagerForToolRun] = None) -> str:
         try:
+            company_name = metadata["companyName"] if metadata else None
+            if not company_name:
+                return "Error: Company name not provided in metadata"
+
             filter_dict = {}
             filter_dict["companyName"] = company_name
 

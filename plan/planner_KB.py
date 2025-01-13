@@ -188,10 +188,24 @@ class Planner:
                 # 1. 원본 쿼리 ( = user query )
                 original_query = messages[0].content
 
+
+                
+                # replan_count가 없을 때만 fin_tool 실행
+                input_query = original_query
+                if "replan_count" not in state:
+                    input_query = self.fin_tool.invoke({"query": original_query})
+                    process_result = self.query_processor_tool.invoke({"query": input_query})
+                    print("process_result:", process_result)
+                    input_query = process_result["input_query"]
+                    metadata = process_result["metadata"]
+                messages[0].content = input_query
+                logging.info(f"원본 쿼리: {original_query}")
+                logging.info(f"FinTool 사용 후의 쿼리: {input_query}")
+                
                 # report_agent_use 판단
                 if is_valid_query(original_query):
                     logging.info("report_agent_use 판단 시작")
-                    result_message = self.report_agent_tool.invoke({"query": original_query})
+                    result_message = self.report_agent_tool.invoke({"query": original_query, "metadata": metadata})
                     logging.info("report_agent_tool 사용 후 바로 종료합니다.")
                     # 상위 레벨(should_continue)에서 이 값을 확인해 종료 처리
                     return {
@@ -200,15 +214,6 @@ class Planner:
                         "report_agent_use": True
                     }
                 
-                # replan_count가 없을 때만 fin_tool 실행
-                input_query = original_query
-                if "replan_count" not in state:
-                    input_query = self.fin_tool.invoke({"query": original_query})
-                    input_query = self.query_processor_tool.invoke({"query": input_query})
-                messages[0].content = input_query
-                logging.info(f"원본 쿼리: {original_query}")
-                logging.info(f"FinTool 사용 후의 쿼리: {input_query}")
-
                 try:
 
                     initial_tasks = list(planner.stream(messages))

@@ -56,8 +56,17 @@ class MarketDataTool(BaseTool):
         """
         try:
             result = self.agent_executor.invoke({"messages": [("human", query)]})
-            return result["messages"][-1].content
-                
+            output = result["messages"][-1].content
+            return {
+                "output": output,
+                "key_information": [
+                    {
+                        "tool": "시장 데이터 도구",
+                        "referenced_content": '한국거래소',
+                    }
+                ]
+            }
+                    
         except Exception as e:
             raise ToolException(f"분석 중 오류가 발생했습니다: {str(e)}")
 

@@ -6,6 +6,7 @@ from typing import List, Optional, Dict, Any, Callable, Iterable, Sequence, Tupl
 from langchain_core.documents import Document
 from langchain_core.language_models import BaseLanguageModel
 from langchain_openai import ChatOpenAI
+from langchain_community.chat_models import ChatClovaX
 from langchain.retrievers.document_compressors import LLMChainExtractor
 from langchain.retrievers import ContextualCompressionRetriever
 from langchain_core.output_parsers import StrOutputParser
@@ -190,6 +191,11 @@ class RetrievalManager:
             model="gpt-3.5-turbo-0125",
             temperature=0,
         )
+        self.clova_x = ChatClovaX(
+            model="HCX-003",
+            temperature=0.1,
+            include_ai_filters=False,
+        )
         self.korean_nlp = korean_nlp
         self.rewrite_callbacks = [RewriteDebugHandler()]
         self.query_constructor_callbacks = [QueryConstructorDebugHandler()]
@@ -220,7 +226,7 @@ class RetrievalManager:
     def create_compression_retriever(self, base_retriever) -> ContextualCompressionRetriever:
         """압축 검색기 생성"""
         compressor = CustomLLMChainExtractor.from_llm(
-            self.gpt_4o_mini,
+            self.clova_x,
             )
         return ContextualCompressionRetriever(
             base_compressor=compressor,

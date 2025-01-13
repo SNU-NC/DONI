@@ -122,7 +122,7 @@ class SameSectorAnalyzer:
         if not api_key:
             raise ValueError("OpenAI API 키를 찾을 수 없습니다.")
         llm = ChatOpenAI(
-            model_name="gpt-4",
+            model_name="gpt-4o",
             openai_api_key=api_key
         )
 
@@ -205,8 +205,34 @@ class SameSectorAnalyzerTool(BaseTool):
             # 결과 문자열 포맷팅
             industry_info = f"업종 분석 결과:\n{analysis}"
 
-            return industry_info
+            # key_information 구성
+            key_information = []
+            
+            # 종목코드 찾기
+            df = pd.read_csv('data/kospi_list.csv')
+            stock_code = df[df['종목명'] == filter_dict['companyName']]['종목코드'].iloc[0]
+            
+            # 재무 데이터 소스 정보
+            key_information.append({
+                'tool': '동종업계 비교 도구',
+                'referenced_content': f"{filter_dict['companyName']}의 동종업계 재무비교 분석",
+                'source': 'Yahoo Finance',
+                'link': f"https://finance.yahoo.com/quote/{stock_code}.KS"
+            })
+
+            # 경쟁사 데이터 소스 정보
+            key_information.append({
+                'tool': '동종업계 비교 도구(경쟁사 데이터)',
+                'referenced_content': f"경쟁사 목록: {', '.join(analyzer.competitors)}",
+                'source': '내부 경쟁사데이터 DB',
+                'filename': 'data/경쟁사데이터.csv'
+            })
+
+            return {
+                'output': industry_info,
+                'key_information': key_information
+            }
         except Exception as e:
-            return f"Unexpected error occurred: {e}"
+            return {'output': f"Unexpected error occurred: {e}"}
 
 

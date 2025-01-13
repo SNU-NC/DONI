@@ -142,7 +142,7 @@ def create_joiner(llm: BaseChatModel):
         print("stop_joiner 값은 뭐야 ? ", report_agent_use)
         if report_agent_use:
             # 체인을 안 썼을 때 반환할 수 있는 간단한 결과 예시
-            print("체인을 안썼슴다~~~~~ 이예 ~ ")
+            print("체인을 사용하지 않았습니다.")
             return {
                 "messages": [AIMessage(content=state["messages"][-1].content)],
             }

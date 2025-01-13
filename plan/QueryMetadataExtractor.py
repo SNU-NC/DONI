@@ -86,6 +86,7 @@ class CompanyNameMatcher:
         return best_overall_match, best_overall_score
 
 class LLMMetadataExtractor:
+    """PlanA : LLM을 사용하여 메타데이터 추출"""
     def __init__(self, llm: BaseChatModel, company_names_file="data/all_company_names.json"):
         self.llm = llm.with_structured_output(QueryMetadata)
         self.current_year = str(datetime.now().year)

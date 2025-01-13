@@ -5,6 +5,7 @@ T = TypeVar("T")
 
 class TaskResult(TypedDict):
     """Task 실행 결과를 저장하는 타입"""
+    """ 출처를 저장할 때 사용합니다. """
     tool_name: str
     task_id: str
     timestamp: str

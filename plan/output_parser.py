@@ -36,7 +36,7 @@ def _ast_parse(arg: str) -> Any:
 
 
 def _parse_llm_compiler_action_args(args: str, tool: Union[str, BaseTool]) -> list[Any]:
-    """Parse arguments from a string."""
+    """문자열에서 인자를 파싱합니다."""
     if args == "":
         return ()
     if isinstance(tool, str):

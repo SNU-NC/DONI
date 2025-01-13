@@ -181,6 +181,25 @@ class Planner:
         planner = self.planner
         llm = self.llm
         llm_mini = self.llm_mini
+        def is_in_report_agent(company_name: str) -> bool:
+            # 리포트 에이전트에서 처리할 수 없는 기업인지 확인 
+                # 리포트 에이전트가 처리할 수 있는 기업 목록
+            report_companies = {
+                "SK하이닉스": "000660",
+                "대한항공": "003490",
+                "대한항공우": "003495",
+                "포스코퓨처엠": "003670",
+                #"현대차": "005380",
+                "SK텔레콤": "017670",
+                "삼성전자": "005930",
+                "두산에너빌리티": "034020",
+                "NAVER": "035420",
+                "카카오": "035720",
+                "넷마블": "251270",
+                "LG에너지솔루션": "373220"
+            }
+
+            return company_name in report_companies
 
         @as_runnable
         def plan_and_schedule(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -189,10 +208,26 @@ class Planner:
                 # 1. 원본 쿼리 ( = user query )
                 original_query = messages[0].content
 
+                # replan_count가 없을 때만 fin_tool 실행
+                input_query = original_query
+                if "replan_count" not in state:
+                    input_query = self.fin_tool.invoke({"query": original_query})
+                    process_result = self.query_processor_tool.invoke({"query": input_query})
+                    print("process_result:", process_result)
+                    input_query = process_result["input_query"]
+                    metadata = process_result["metadata"]
+                messages[0].content = input_query
+                logging.info(f"원본 쿼리: {original_query}")
+                logging.info(f"FinTool 사용 후의 쿼리: {input_query}")
+                
+                # 리포트 에이전트에서 처리할 수 없는 기업인지 확인 
+                is_report_can = is_in_report_agent(metadata["companyName"])
+                print("is_report_can:", is_report_can)
+
                 # report_agent_use 판단
-                if is_valid_query(original_query):
+                if is_valid_query(original_query) and is_report_can:
                     logging.info("report_agent_use 판단 시작")
-                    result_message = self.report_agent_tool.invoke({"query": original_query})
+                    result_message = self.report_agent_tool.invoke({"query": original_query, "metadata": metadata})
                     logging.info("report_agent_tool 사용 후 바로 종료합니다.")
                     # 상위 레벨(should_continue)에서 이 값을 확인해 종료 처리
                     return {
@@ -200,15 +235,6 @@ class Planner:
                         "replan_count": state.get("replan_count", 0),
                         "report_agent_use": True
                     }
-                
-                # replan_count가 없을 때만 fin_tool 실행
-                input_query = original_query
-                if "replan_count" not in state:
-                    input_query = self.fin_tool.invoke({"query": original_query})
-                    input_query = self.query_processor_tool.invoke({"query": input_query})
-                messages[0].content = input_query
-                logging.info(f"원본 쿼리: {original_query}")
-                logging.info(f"FinTool 사용 후의 쿼리: {input_query}")
 
                 try:
 

@@ -636,15 +636,4 @@ class CompanyVectorStore:
                         for company, _ in top_k_companies]
         final_results.sort(key=lambda x: x[1], reverse=True)
         
-        # 상위 k개 결과에 대한 상세 정보 출력
-        print("\n=== 최종 상위 결과 ===")
-        for company, _ in final_results:
-            scores = company_scores[company]
-            print(f"\n{company}:")
-            print(f"  Matcher 점수: {scores['matcher_score']:.3f}")
-            print(f"  Vector 점수: {scores['vector_score']:.3f}")
-            print(f"  Purchase 점수: {scores['purchase_score']:.3f}")
-            print(f"  기본 점수: {scores['base_score']:.3f}")
-            print(f"  총점: {scores['total_score']:.3f}")
-            
         return final_results

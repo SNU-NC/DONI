@@ -5,7 +5,7 @@ from langchain import hub
 from typing_extensions import TypedDict
 from langgraph.graph import END, StateGraph, START
 from typing import Annotated, List
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import AIMessage
 
 # 도구 임포트 및 초기화 코드
 from tools.webSearch.webSearch_tool import WebSearchTools

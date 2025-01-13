@@ -19,9 +19,9 @@ from tools.analyze.stockprice.StockAnalyzerTool import StockAnalyzerTool
 from tools.analyze.stockprice.CombinedAnalysisTool import CombinedAnalysisTool
 from langgraph.graph.message import add_messages
 
-from planner_KB import Planner
-from join import create_joiner
-from reference import TaskResult, add_task_results
+from plan.planner_KB import Planner
+from plan.join import create_joiner
+from plan.reference import TaskResult, add_task_results
 
 def initialize_chain():
     # LLM 초기화

@@ -72,7 +72,7 @@ class PlanStore:
                     print(doc.page_content)
                     return None 
                 else :
-                    print("별로 비슷하지 않음 ")
+                    print("비슷함")
                     print(score)
                     print(doc.page_content)
                     print(doc.metadata)

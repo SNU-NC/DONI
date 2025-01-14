@@ -76,19 +76,31 @@ def select_recent_messages(state) -> dict:
         try :
             if isinstance(message, HumanMessage):
                 output_list.append(message.content)
-            elif message.content == 'join':
+            elif message.content == 'join':   #메세지 내용이 join인 경우에는 무시 
                 print("join 메세지 왔습니다~~~~")
                 continue
+            elif isinstance(message.content, (float, int)):  # float나 int 타입 체크
+                print(f"숫자 타입 메시지 처리: {message.content}")
+                output_list.append(str(message.content))
             elif isinstance(message, FunctionMessage):
                 print("FunctionMessage에 왔습니다~~~~")
-                dict_content = literal_eval(message.content)
-                output_list.append(dict_content['output'])
-                print(f"message.content: {dict_content}")
-                print(f"jsonver['output']: {dict_content['output']}")
-                output_list.append(json.loads(message.content)['output'])
+                if isinstance(message.content, str):
+                    # 숫자 형태의 문자열인지 확인
+                    try:
+                        float(message.content)  # 숫자로 변환 시도
+                        print(f"숫자 형태의 문자열 처리: {message.content}")
+                        output_list.append(message.content)
+                    except ValueError:  # 숫자로 변환 실패 시 (일반 문자열)
+                        dict_content = literal_eval(message.content)
+                        output_list.append(dict_content['output'])
+                        print(f"message.content: {dict_content}")
+                        print(f"dict_content['output']: {dict_content['output']}")
+                else:
+                    print(f"FunctionMessage이지만 문자열이 아닌 타입: {type(message.content)}")
+
 
         except Exception as e:
-            print(f"예외 발생: {e}")
+            print(f"예외 발생: {e}, 메시지 타입: {type(message.content)}")
             continue
     print("^^^^^^^^^^^^^^^^^^^^ logging for output_list ^^^^^^^^^^^^^^^^^^^^")
     print(f"output_list: {output_list}")       
@@ -133,7 +145,7 @@ def check_replan_count(state: dict):
     logging.info(f"Current replan count: {replan_count}, continuing normal path")
 
     return {
-        "messages": output_list,
+        "messages":[SystemMessage(content=msg) for msg in output_list],
         "replan_count": replan_count,
         "force_final_answer": False,
        # "output_list": output_list

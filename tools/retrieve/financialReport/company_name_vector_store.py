@@ -68,13 +68,13 @@ def simple_filter(input_text):
     ENGS = ['a', 'A', 'b', 'B', 'c', 'C', 'd', 'D', 'e', 'E', 'f', 'F', 'g', 'G', 'h', 'H', 'i', 'I', 'j', 'J', 'k',
             'K', 'l', 'L',
             'm', 'M', 'n', 'N', 'o', 'O', 'p', 'P', 'q', 'Q', 'r', 'R', 's', 'S', 't', 'T', 'u', 'U', 'v', 'V', 'w',
-            'W', 's', 'S', 'y', 'Y', 'z', 'Z']
+            'W', 'x', 'X', 'y', 'Y', 'z', 'Z']
 
     KORS = ['에이', '에이', '비', '비', '씨', '씨', '디', '디', '이', '이', '에프', '에프', '쥐', '쥐', '에이치', '에이치', '아이', '아이', '제이',
             '제이',
             '케이', '케이', '엘', '엘', '엠', '엠', '엔', '엔', '오', '오', '피', '피', '큐', '큐', '알', '알', '에스', '에스', '티', '티', '유',
             '유', '브이', '브이',
-            '더블유', '더블유', '에스', '에스', '와이', '와이', '지', '지']
+            '더블유', '더블유', '엑스', '엑스', '와이', '와이', '지', '지']
 
     trans = dict(zip(ENGS, KORS)) # 영어와 한글을 대칭하여 딕셔너리화
     is_english = re.compile('[-a-zA-Z]') # 영어 정규화
@@ -579,61 +579,233 @@ class CompanyVectorStore:
                     pass
             return {}
 
+    # def hybrid_search(self, query: str, k: int = 5, 
+    #                  matcher_weight: float = 0.5,
+    #                  vector_weight: float = 0.4,
+    #                  purchase_weight: float = 0.1) -> List[Tuple[str, float]]:
+    #     """
+    #     BM25, 벡터 검색, 순매수 데이터를 결합한 하이브리드 검색
+        
+    #     Args:
+    #         query: 검색어
+    #         k: 반환할 결과 수
+    #         matcher_weight: 매처 점수 가중치
+    #         vector_weight: 벡터 검색 점수 가중치
+    #         purchase_weight: 순매수 가중치 (상위 k개 결과에 적용)
+    #     """
+    #     # CompanyNameMatcher를 사용한 매칭
+    #     matcher = CompanyNameMatcher()
+    #     matcher_results = matcher.find_matching_company(query, top_k=k)
+    #     matcher_scores = dict(matcher_results)
+    #     print(matcher_scores)
+    #     # 벡터 검색
+    #     vector_results = self.find_similar_companies(query, k=k)
+    #     vector_scores = {company: score for company, score in vector_results}  # 유사도 점수 사용
+    #     print(vector_scores)
+    #     # 결과 통합
+    #     company_scores = {}
+        
+    #     # 모든 회사에 대해 통합 점수 계산
+    #     for company in set(list(matcher_scores.keys()) + list(vector_scores.keys()) + list(self.net_purchase_weights.keys())):
+    #         matcher_score = matcher_scores.get(company, 0.0)
+    #         vector_score = vector_scores.get(company, 0.0)
+    #         purchase_score = self.net_purchase_weights.get(company, 0.0)
+            
+    #         # 기본 점수 계산 (순매수 가중치 제외)
+    #         base_score = (matcher_score * matcher_weight + vector_score * vector_weight)
+            
+    #         # 각 회사별로 점수 저장
+    #         company_scores[company] = {
+    #             'matcher_score': matcher_score,
+    #             'vector_score': vector_score,
+    #             'purchase_score': purchase_score,
+    #             'base_score': base_score,
+    #             'total_score': base_score  # 초기값은 base_score로 설정
+    #         }
+
+    #     # 기본 점수로 정렬하여 상위 k개 선택
+    #     sorted_companies = sorted(company_scores.items(), key=lambda x: x[1]['base_score'], reverse=True)
+    #     top_k_companies = sorted_companies[:k]
+        
+    #     # 상위 k개 회사에 대해서만 순매수 가중치 적용
+    #     for company, scores in top_k_companies:
+    #         company_scores[company]['total_score'] = scores['base_score'] + (scores['purchase_score'] * purchase_weight)
+
+    #     # 최종 점수로 다시 정렬 (상위 k개 중에서)
+    #     final_results = [(company, company_scores[company]['total_score']) 
+    #                     for company, _ in top_k_companies]
+    #     final_results.sort(key=lambda x: x[1], reverse=True)
+        
+    #     return final_results
+    
+    # def hybrid_search(self, query: str, k: int = 5, 
+    #                  matcher_weight: float = 0.5,
+    #                  vector_weight: float = 0.4,
+    #                  purchase_weight: float = 0.1) -> List[Tuple[str, float]]:
+    #     """
+    #     최적화된 하이브리드 검색
+    #     """
+    #     # 1. 초기 검사 - 영어인지 한글인지 판단
+    #     is_eng = bool(re.search('[a-zA-Z]', query))
+    #     is_kor = bool(re.search('[ㄱ-ㅎㅏ-ㅣ가-힣]', query))
+        
+    #     # 2. 필요한 변형만 생성
+    #     query_variations = [query]  # 원본은 항상 포함
+        
+    #     if is_kor:  # 한글이 있는 경우
+    #         try:
+    #             # 한글->영어 번역만 시도
+    #             translator = GoogleTranslator(source='ko', target='en')
+    #             eng_query = translator.translate(query)
+    #             if eng_query:
+    #                 query_variations.append(eng_query.upper())
+    #         except Exception as e:
+    #             print(f"Translation error (ko->en): {e}")
+                
+    #     elif is_eng:  # 영어만 있는 경우
+    #         try:
+    #             # 영어->한글 번역만 시도
+    #             translator = GoogleTranslator(source='en', target='ko')
+    #             kor_query = translator.translate(query)
+    #             if kor_query:
+    #                 query_variations.append(kor_query)
+    #         except Exception as e:
+    #             print(f"Translation error (en->ko): {e}")
+        
+    #     # 3. 각 변형에 대해 병렬로 검색 수행
+    #     all_matcher_results = []
+    #     all_vector_results = []
+        
+    #     # 매처와 벡터 검색을 각각 한 번만 수행
+    #     matcher = CompanyNameMatcher()
+        
+    #     for query_var in query_variations:
+    #         # 매처 검색
+    #         matcher_results = matcher.find_matching_company(query_var, top_k=k)
+    #         all_matcher_results.extend(matcher_results)
+            
+    #         # 벡터 검색 (exact match가 없는 경우에만)
+    #         if not any(score > 0.95 for _, score in matcher_results):
+    #             vector_results = self.find_similar_companies(query_var, k=k)
+    #             all_vector_results.extend(vector_results)
+        
+    #     # 4. 결과 통합 (중복 제거 및 최대 점수 유지)
+    #     matcher_scores = {}
+    #     vector_scores = {}
+        
+    #     for company, score in all_matcher_results:
+    #         matcher_scores[company] = max(matcher_scores.get(company, 0.0), score)
+        
+    #     for company, score in all_vector_results:
+    #         vector_scores[company] = max(vector_scores.get(company, 0.0), score)
+        
+    #     # 5. 최종 점수 계산
+    #     company_scores = {}
+
+    #     # 모든 회사에 대해 통합 점수 계산
+    #     for company in set(list(matcher_scores.keys()) + list(vector_scores.keys())):
+    #         matcher_score = matcher_scores.get(company, 0.0)
+    #         vector_score = vector_scores.get(company, 0.0)
+    #         purchase_score = self.net_purchase_weights.get(company, 0.0)
+            
+    #         # 기본 점수 계산
+    #         base_score = (matcher_score * matcher_weight + vector_score * vector_weight)
+    #         total_score = base_score + (purchase_score * purchase_weight)
+            
+    #         company_scores[company] = total_score
+        
+    #     # 6. 최종 결과를 점수 기준으로 정렬
+    #     final_results = [(company, score) for company, score in company_scores.items()]
+    #     final_results.sort(key=lambda x: x[1], reverse=True)
+        
+    #     return final_results[:k]
     def hybrid_search(self, query: str, k: int = 5, 
                      matcher_weight: float = 0.5,
                      vector_weight: float = 0.4,
                      purchase_weight: float = 0.1) -> List[Tuple[str, float]]:
         """
-        BM25, 벡터 검색, 순매수 데이터를 결합한 하이브리드 검색
-        
-        Args:
-            query: 검색어
-            k: 반환할 결과 수
-            matcher_weight: 매처 점수 가중치
-            vector_weight: 벡터 검색 점수 가중치
-            purchase_weight: 순매수 가중치 (상위 k개 결과에 적용)
+        성능이 최적화된 하이브리드 검색
         """
-        # CompanyNameMatcher를 사용한 매칭
+        # 1. 초기 검사 - 영어인지 한글인지 판단
+        query = query.strip().upper()
+        
+        # 2. 약자 처리를 위한 최적화된 매핑
+        abbreviation_mapping = {
+            'SDI': ['삼성SDI', 'SAMSUNG SDI'],
+            'SK': ['SK', '에스케이'],
+            'LG': ['LG', '엘지'],
+            'GS': ['GS', '지에스'],
+        }
+        
+        # 3. 쿼리 변형 생성 (최소화)
+        query_variations = [query]
+        
+        # 약자가 있는 경우에만 처리
+        for abbr, expansions in abbreviation_mapping.items():
+            if abbr == query:  # 정확히 일치하는 경우만 처리
+                query_variations.extend(expansions)
+                break  # 하나 찾으면 중단
+        
+        # 중복 제거
+        query_variations = list(dict.fromkeys(query_variations))
+        
+        # 4. 매처 검색 최적화
         matcher = CompanyNameMatcher()
-        matcher_results = matcher.find_matching_company(query, top_k=k)
-        matcher_scores = dict(matcher_results)
-        print(matcher_scores)
-        # 벡터 검색
-        vector_results = self.find_similar_companies(query, k=k)
-        vector_scores = {company: score for company, score in vector_results}  # 유사도 점수 사용
-        print(vector_scores)
-        # 결과 통합
-        company_scores = {}
+        all_results = {}
         
-        # 모든 회사에 대해 통합 점수 계산
-        for company in set(list(matcher_scores.keys()) + list(vector_scores.keys()) + list(self.net_purchase_weights.keys())):
-            matcher_score = matcher_scores.get(company, 0.0)
-            vector_score = vector_scores.get(company, 0.0)
-            purchase_score = self.net_purchase_weights.get(company, 0.0)
+        for query_var in query_variations:
+            # 매처 검색
+            matcher_results = matcher.find_matching_company(query_var, top_k=k)
             
-            # 기본 점수 계산 (순매수 가중치 제외)
-            base_score = (matcher_score * matcher_weight + vector_score * vector_weight)
+            # 높은 정확도의 결과가 있으면 벡터 검색 스킵
+            high_accuracy_match = False
             
-            # 각 회사별로 점수 저장
-            company_scores[company] = {
-                'matcher_score': matcher_score,
-                'vector_score': vector_score,
-                'purchase_score': purchase_score,
-                'base_score': base_score,
-                'total_score': base_score  # 초기값은 base_score로 설정
-            }
-
-        # 기본 점수로 정렬하여 상위 k개 선택
-        sorted_companies = sorted(company_scores.items(), key=lambda x: x[1]['base_score'], reverse=True)
-        top_k_companies = sorted_companies[:k]
+            for company, score in matcher_results:
+                if score > 0.9:  # 높은 정확도 임계값
+                    high_accuracy_match = True
+                    all_results[company] = {
+                        'matcher_score': score,
+                        'vector_score': 0.0,
+                        'found_in_variation': query_var
+                    }
+            
+            # 높은 정확도 매치가 없는 경우에만 벡터 검색 수행
+            if not high_accuracy_match:
+                vector_results = self.find_similar_companies(query_var, k=k)
+                
+                for company, score in vector_results:
+                    if company not in all_results:
+                        all_results[company] = {
+                            'matcher_score': 0.0,
+                            'vector_score': score,
+                            'found_in_variation': query_var
+                        }
+                    else:
+                        all_results[company]['vector_score'] = max(
+                            all_results[company]['vector_score'], 
+                            score
+                        )
         
-        # 상위 k개 회사에 대해서만 순매수 가중치 적용
-        for company, scores in top_k_companies:
-            company_scores[company]['total_score'] = scores['base_score'] + (scores['purchase_score'] * purchase_weight)
-
-        # 최종 점수로 다시 정렬 (상위 k개 중에서)
-        final_results = [(company, company_scores[company]['total_score']) 
-                        for company, _ in top_k_companies]
-        final_results.sort(key=lambda x: x[1], reverse=True)
+        # 5. 최종 점수 계산 (최적화)
+        final_scores = {}
+        
+        for company, scores in all_results.items():
+            # 기본 점수 계산
+            base_score = (scores['matcher_score'] * matcher_weight + 
+                        scores['vector_score'] * vector_weight)
+            
+            # 약자 매칭에 대한 보너스 점수 (단순화)
+            if query in abbreviation_mapping and \
+            any(exp in scores['found_in_variation'] for exp in abbreviation_mapping[query]):
+                base_score *= 1.2
+            
+            final_scores[company] = base_score
+        
+        # 6. 상위 k개 결과만 반환
+        final_results = sorted(
+            [(company, score) for company, score in final_scores.items()],
+            key=lambda x: x[1],
+            reverse=True
+        )[:k]
         
         return final_results

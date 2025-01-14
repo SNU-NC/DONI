@@ -116,8 +116,8 @@ class Planner:
                         
                 # 5. 결과 포맷팅
                 planning_candidates = "\n\n".join([
-                    f"사용자의 질문과 유사하다면 다음 계획 예시를 참고하세요: " +
-                    f" EXAMPLE {i+1} (Query: {example.query}):\n" + 
+                    f"사용자의 질문과 유사하다면 다음 계획 예시를 참고하세요:\n " +
+                    f"##EXAMPLE {i+1} (Query: {example.query}):\n" + 
                     "\n".join([f"- {step}" for step in example.plan.steps])
                     for i, example in enumerate(similar_examples)
                 ])

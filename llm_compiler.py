@@ -53,6 +53,7 @@ def initialize_chain():
         task_results: Annotated[List[TaskResult], add_task_results]
         key_information: List[str]
         report_agent_use: bool
+        output_list: List[str]
     # 그래프 생성 및 설정
     graph_builder = StateGraph(State)
     graph_builder.add_node("plan_and_schedule", planner.create_plan_and_schedule)

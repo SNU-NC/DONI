@@ -36,7 +36,7 @@ class FinancialReportTool(BaseTool):
         company: str = None,
         year: int = 2023,
         top_k: int = 5, 
-        rewrite: bool = False, 
+        rewrite: bool = True, 
         run_manager: Optional[CallbackManagerForToolRun] = None
     ) -> str:
         try:

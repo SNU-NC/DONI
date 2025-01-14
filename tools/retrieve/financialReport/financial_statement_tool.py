@@ -54,6 +54,8 @@ class FinancialStatementTool(BaseTool):
             
             for y in range(year, year-3, -1):
                 df = self.dart.finstate_all(companyName, y, reprt_code="11011")
+                if df is None or df.empty:
+                    df = self.dart.finstate(companyName, y, reprt_code="11011")
                 if df is not None and not df.empty:
                     dfs.append(df)
                     if latest_rcp_no is None:

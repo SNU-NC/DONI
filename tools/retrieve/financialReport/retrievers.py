@@ -2,6 +2,7 @@
 다양한 검색기(Retriever) 구현 모듈
 """
 import os
+import OpenDartReader
 from typing import List, Optional, Dict, Any, Callable, Iterable, Sequence, Tuple
 from langchain_core.documents import Document
 from langchain_core.language_models import BaseLanguageModel
@@ -14,6 +15,7 @@ from tools.retrieve.financialReport.prompts import (
     REWRITE_PROMPT,
     FINAL_SUMMARY_PROMPT,
     EXTRACT_PROMPT,
+    DEFAULT_TITLE,
 )
 from langchain_core.callbacks import BaseCallbackHandler
 from uuid import UUID
@@ -193,6 +195,7 @@ class RetrievalManager:
         self.korean_nlp = korean_nlp
         self.rewrite_callbacks = [RewriteDebugHandler()]
         self.query_constructor_callbacks = [QueryConstructorDebugHandler()]
+        self.dart = OpenDartReader("4925a6e6e69d8f9138f4d9814f56f371b2b2079a")
 
     def _create_parse_runnable(self):
         """파싱을 위한 Runnable 생성"""
@@ -211,10 +214,12 @@ class RetrievalManager:
         chain = (REWRITE_PROMPT | self.gpt_4o_mini | StrOutputParser() | self._parse)
         return chain
     
-    def rewrite_query(self, query: str) -> str:
+    def rewrite_query(self, query: str, title: str = "") -> str:
         """쿼리 재작성 수행"""
+        if not title:
+            title = DEFAULT_TITLE
         rewriter = self._create_rewrite_chain()
-        rewrite_query = rewriter.invoke({"query": query})
+        rewrite_query = rewriter.invoke({"query": query, "title": title})
         return rewrite_query
     
     def create_compression_retriever(self, base_retriever) -> ContextualCompressionRetriever:
@@ -269,6 +274,10 @@ class RetrievalManager:
     def get_retriever_results(self, query: str, k: int = 4, rewrite: bool = True, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """검색기 결과 반환"""
         from tools.retrieve.financialReport.prompts import output_parser
+
+        rcept_no = self.dart.finstate(metadata['companyName'], metadata['year'], reprt_code="11011")['rcept_no'].unique()[0]
+        rcept_no_title = '\n'.join(self.dart.sub_docs(rcept_no)['title'].tolist())
+
         if rewrite:
             query = self.rewrite_query(query)
         
@@ -292,13 +301,13 @@ class RetrievalManager:
         # 2024년 검색 결과가 없고, 현재 연도가 2024년인 경우 2023년 데이터로 재검색
         if (not results_docs and 
             metadata and 
-            metadata.get('year') == 2024):
+            metadata.get('year') == 2024 or metadata.get('year') == 2025):
             metadata_2023 = metadata.copy()
             metadata_2023['year'] = 2023
             results_docs = perform_search(metadata_2023)
             if results_docs:
                 # 2023년 데이터를 찾았다는 메시지 추가
-                prefix_message = "[2024년 데이터가 없어 2023년 데이터를 검색했습니다]\n"
+                prefix_message = f"[{metadata.get('year')}년 데이터가 없어 {metadata.get('year')-1}년 데이터를 검색했습니다]\n"
         else:
             prefix_message = ""
         

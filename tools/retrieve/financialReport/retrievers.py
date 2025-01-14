@@ -274,12 +274,14 @@ class RetrievalManager:
     def get_retriever_results(self, query: str, k: int = 4, rewrite: bool = True, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """검색기 결과 반환"""
         from tools.retrieve.financialReport.prompts import output_parser
-
-        rcept_no = self.dart.finstate(metadata['companyName'], metadata['year'], reprt_code="11011")['rcept_no'].unique()[0]
-        rcept_no_title = '\n'.join(self.dart.sub_docs(rcept_no)['title'].tolist())
+        rcept_no_title = ""
+        rcept_no = self.dart.finstate(metadata['companyName'], metadata['year'], reprt_code="11011")
+        if not rcept_no.empty:
+            rcept_no = rcept_no['rcept_no'].unique()[0]
+            rcept_no_title = '\n'.join(self.dart.sub_docs(rcept_no)['title'].tolist())
 
         if rewrite:
-            query = self.rewrite_query(query)
+            query = self.rewrite_query(query, rcept_no_title)
         
         final_summary_chain = (
             FINAL_SUMMARY_PROMPT 

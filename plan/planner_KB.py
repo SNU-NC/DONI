@@ -104,7 +104,17 @@ class Planner:
                 similar_examples = self.plan_store.get_similar_examples(query)
                 print("logging for similar_examples")
                 print(similar_examples)
-                # 4. 결과 포맷팅
+
+                # 4. extra_info가 있다면 원본 메시지에 추가
+                for example in similar_examples:
+                    if example.extra_info:
+                        # 기존 메시지 내용에 extra_info 추가
+                        original_content = messages[-1].content
+                        agmentedContent=f"{original_content}\n\n[참고사항] {example.extra_info}"
+
+                        messages[-1].content = agmentedContent
+                        
+                # 5. 결과 포맷팅
                 planning_candidates = "\n\n".join([
                     f"사용자의 질문과 유사하다면 다음 계획 예시를 참고하세요: " +
                     f" EXAMPLE {i+1} (Query: {example.query}):\n" + 

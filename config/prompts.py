@@ -92,7 +92,7 @@ _math_tool_DESCRIPTION = """
     입력은 자연어 질문 형태로 제공하면 됩니다."""
 
 _WEB_SEARCH_TOOL_DESCRIPTION = (
-    "web_search(query: str) -> str:\n"
+    "web_search(query: str, company: str ) -> str:\n"
     "    - 웹에서 관련 정보를 검색하여, 검색 결과를 반환합니다.\n"
     "    - 진출 시장, 동향, 분위기, 이슈 등 사회적 이슈가 질문에 포함되어 있으면 웹 검색을 통해 정보를 추출해주세요\n"
 ) 

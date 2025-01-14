@@ -22,15 +22,25 @@ class PlanStore:
                     plans = json.load(f)
                 except json.JSONDecodeError as e:
                     raise ValueError(f"Invalid JSON format in plans file: {e}")
-                except Exception as e:
-                    raise ValueError(f"Error parsing plans file: {e}")
                     
         except IOError as e:
             raise IOError(f"Error reading plans file: {e}")
             
         try:
-            texts = [plan['query'] for plan in plans]  # 쿼리 부분만 추출
-            metadatas = [{'plan': json.dumps(plan['plan'], ensure_ascii=False)} for plan in plans]  # 계획은 메타데이터로 저장
+            texts = [plan['query'] for plan in plans]
+            metadatas = []
+            for plan in plans:
+                metadata = {
+                    'plan': json.dumps({
+                        'steps': plan['plan']['steps']
+                    }, ensure_ascii=False)
+                }
+                
+                # extra_info가 있는 경우에만 메타데이터에 추가
+                if 'extra_info' in plan and plan['extra_info'] is not None:
+                    metadata['extra_info'] = plan['extra_info']
+                    
+                metadatas.append(metadata)
 
             self.vector_store = Chroma(
                 collection_name="plan_examples",
@@ -42,7 +52,7 @@ class PlanStore:
         except Exception as e:
             raise RuntimeError(f"Error initializing vector store: {e}")
         
-    def get_similar_examples(self, query: str, k: int = 1, score_threshold: float = 0.9) -> List[PlanExample]:
+    def get_similar_examples(self, query: str, k: int = 1, score_threshold: float = 1 ) -> List[PlanExample]:
         """쿼리와 유사한 계획 예시들 검색
         Args:
             query: 검색할 쿼리
@@ -60,20 +70,25 @@ class PlanStore:
                 if score > score_threshold :
                     print(f"Skipping example with low similarity score: {score:.3f}")
                     print(doc.page_content)
-                    # return " "
                     return None 
-                    
+                else :
+                    print("별로 비슷하지 않음 ")
+                    print(score)
+                    print(doc.page_content)
+                    print(doc.metadata)
+
+
                 example = PlanExample(
                     query=doc.page_content,
-                    plan=json.loads(doc.metadata['plan'])
+                    plan=json.loads(doc.metadata['plan']),
+                    extra_info = doc.metadata.get('extra_info', None)
                 )
                 print(f"Found similar example with score: {score:.3f}")
                 return example
                 
-            except (json.JSONDecodeError, ValueError) as e:
+            except (json.JSONDecodeError, KeyError) as e:
                 print(f"Error processing document: {e}")
-                # return " "
-                return None 
+                return None
 
         # list comprehension과 filter를 사용하여 코드 단순화
         examples = [

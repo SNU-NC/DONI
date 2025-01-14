@@ -219,6 +219,7 @@ FINAL_SUMMARY_PROMPT = PromptTemplate(
             5. key_information에는 답변 작성에 실제로 사용된 정보만 포함하세요
             6. 중복된 내용이나 답변에 반영되지 않은 내용은 key_information에서 제외하세요
             7. 검색된 정보의 시점(연도, 분기 등)을 명확히 포함하여 답변하세요
+            8. 찾고자 하는 값과 38기, 39기와 같은 기수 정보가 있다면 우선 각 기수별로 숫자를 정확히 매칭하여 모두 반환하세요
            """,
     input_variables=["query", "search_results"]
 )

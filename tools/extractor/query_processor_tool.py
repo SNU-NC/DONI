@@ -32,6 +32,7 @@ class QueryProcessor:
     1. 회사가 하나도 없으면 빈 리스트 []를 반환합니다.
     2. 반드시 리스트 형식으로 응답해야 합니다.
     3. 어떠한 설명이나 추가 텍스트도 포함하지 마십시오.
+    4. 쿼리에 나와있는 형태 그대로 반환해야합니다.
      
     출력 형식:
     ["회사명1", "회사명2"] 형태로만 정확히 반환
@@ -42,12 +43,15 @@ class QueryProcessor:
     
     입력: 카카오는 실제 빚이 얼마나 되나요? 현금성자산을 제외하고 알려주세요.
     출력: ["카카오"]
+     
+    입력: 엥스케이하이닉스 주가 어떤가요?
+    출력: ["엥스케이하이닉스"]
 
     입력: LG전자와 SK하이닉스 중 어느 회사가 더 좋을까요?
     출력: ["LG전자", "SK하이닉스"]
 
     입력: 엘지와 삼성의 영업이익률 추이가 궁금합니다
-    출력: ["LG", "삼성"]
+    출력: ["엘지", "삼성"]
      
     입력: 카카오 종속기업중에 카카오모빌리티의 진출 시장과 그 회사의 총자산에 대해서 알려줘
     출력: ["카카오", "카카오모빌리티"]
@@ -77,8 +81,11 @@ class QueryProcessor:
 2. 후보 목록에 여러 회사가 있다면:
    - 정확히 일치하는 회사가 있을 경우 → 그 회사를 반환
    - 정확히 일치하는 회사가 없을 경우 → 가장 유사한 회사를 반환
-3. 회사명만 반환하고 다른 텍스트는 절대 포함하지 마십시오
+3. 회사명만 반환하고 다른 텍스트는 절대 포함하지 마십시오.
 4. 따옴표나 구두점 없이 회사명만 정확히 반환하십시오.
+     
+### 출력 형식 ###
+회사명
      
 ### 응답 전 확인사항 ###
 - 후보가 1개라면 그 회사를 그대로 반환했는가?
@@ -86,26 +93,6 @@ class QueryProcessor:
 - 따옴표나 구두점이 포함되지 않았는가?
     """),
 ])  
-
-        # # 메타데이터(연도) 추출 프롬프트
-        # self.extract_year_prompt = ChatPromptTemplate.from_messages([
-        #     ("system", """
-        #             당신은 사용자의 쿼리에서 연도 정보를 추출하는 전문가입니다.
-        #             현재 연도는 {current_year}입니다.
-                    
-        #             당신의 임무는 다음과 같습니다:
-                    
-        #             - YYYY 또는 YYYY년 형식 인식
-        #             - "올해", "이번년도", "금년" 등은 현재 연도({current_year})로 변환
-        #             - "작년"은 {prev_year}로 변환
-        #             - "내년"도 {prev_year}로 변환
-        #             - 연도가 없다면 None을 반환
-
-        #             입력: {query}
-        #             응답 시 반드시 다음을 지켜주세요:
-        #             1. 정수 형태(integer)로만 반환
-        #             """),
-        #         ])
 
     def extract_info(self, query: str) -> Dict[str, str]:
         print("\n=== 기업명 추출 시작 ===")
@@ -170,6 +157,10 @@ class QueryProcessor:
                     print(f"- 최종 선택된 회사명: {final_company}")
                 else:
                     print("- 적절한 회사를 찾지 못했습니다.")
+
+                    print("- 후처리를 실행합니다. 왜 하는지는 하이퍼클로바한테 물어봐요.")
+                    final_companies.append(candidates[0])
+
         # Step 1 결과가 없는 경우
         else:
             final_companies = []
@@ -177,36 +168,6 @@ class QueryProcessor:
         # 다중 기업 정보 저장
         if final_companies:
             info["companyNames"] = final_companies
-
-        # 연도 정보 추출 (기존 코드와 동일)
-        # year_response = self.llm.invoke(
-        #     self.extract_year_prompt.format(
-        #         query=query,
-        #         current_year=current_year,
-        #         prev_year=prev_year
-        #     )
-        # )
-        # extracted_year = year_response.content.strip().strip('"\'')
-        # if extracted_year:
-        #     try:
-        #         extracted_year = int(extracted_year)
-        #         info["year"] = extracted_year
-        #     except (ValueError, TypeError):
-        #         print(f"경고: 연도 값 '{extracted_year}'를 정수로 변환할 수 없어 None으로 설정합니다")
-        #         extracted_year = None
-
-        # print("\n[연도 정보 추출 결과]")
-        # print(f"- 연도: {extracted_year}")
-        
-        # # 룰베이스 - 올해 관련 키워드 처리
-        # current_year_keywords = ["올해", "이번년도", "금년", "올 해", f"{current_year}년"]
-        # if any(keyword in query for keyword in current_year_keywords):
-        #     info["year"] = int(current_year)
-        
-        # # 룰베이스 - 작년 관련 키워드 처리
-        # prev_year_keywords = ["작년", f"{prev_year}년"]
-        # if any(keyword in query for keyword in prev_year_keywords):
-        #     info["year"] = int(prev_year)
             
         return company_list, info
     
@@ -230,38 +191,6 @@ class QueryProcessor:
                         tagged_query[end_idx + offset:]
                     )
                     offset += len("<companyName>") + len(normalized) + len("</companyName>") - len(original)
-
-
-        # 2. 연도 태그 추가
-        # if "year" in info:
-        #     year_str = str(info["year"])
-        #     current_year = str(datetime.now().year)
-        #     prev_year = str(int(current_year) - 1)
-            
-        #     # 모든 연도 키워드를 dictionary로 관리
-        #     year_keywords = {
-        #         "올해": current_year,
-        #         "이번년도": current_year,
-        #         "금년": current_year,
-        #         "올 해": current_year,
-        #         "작년": prev_year,
-        #         f"{year_str}년": year_str
-        #     }
-            
-        #     # 모든 연도 키워드에 대해 검사
-        #     for keyword, year_value in year_keywords.items():
-        #         start_idx = query.find(keyword)
-        #         if start_idx != -1:
-        #             # 태그 추가
-        #             tagged_query = (
-        #                 tagged_query[:start_idx + offset] +
-        #                 "<year>" +
-        #                 year_str +  # year_str은 이미 info에서 올바른 값으로 설정됨
-        #                 "</year>" + 
-        #                 tagged_query[start_idx + len(keyword) + offset:]
-        #             )
-        #             offset += len("<year>") + len(year_str) + len("</year>") - len(keyword)
-        #             break  # 첫 번째로 발견된 키워드만 처리
 
         return tagged_query
     

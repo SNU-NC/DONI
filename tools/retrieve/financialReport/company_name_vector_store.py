@@ -57,6 +57,8 @@ COMPANY_NAME_MAPPING = {
     'tp': '티피',
     'dl': '디엘',
     'e1': '이원',
+    'bgf': '비지에프',
+    "dgp": "디지피"
 }
 
 def simple_filter(input_text):
@@ -619,7 +621,8 @@ class CompanyVectorStore:
             
             # 높은 정확도의 결과가 있으면 벡터 검색 스킵
             high_accuracy_match = False
-            
+            print(matcher_results)
+
             for company, score in matcher_results:
                 if score > 0.9:  # 높은 정확도 임계값
                     high_accuracy_match = True
@@ -632,7 +635,8 @@ class CompanyVectorStore:
             # 높은 정확도 매치가 없는 경우에만 벡터 검색 수행
             if not high_accuracy_match:
                 vector_results = self.find_similar_companies(query_var, k=k)
-                
+                print(vector_results)
+
                 for company, score in vector_results:
                     if company not in all_results:
                         all_results[company] = {
@@ -648,7 +652,7 @@ class CompanyVectorStore:
         
         # 5. 최종 점수 계산 (최적화)
         final_scores = {}
-        
+
         for company, scores in all_results.items():
             # 기본 점수 계산
             base_score = (scores['matcher_score'] * matcher_weight + 
@@ -659,7 +663,11 @@ class CompanyVectorStore:
             any(exp in scores['found_in_variation'] for exp in abbreviation_mapping[query]):
                 base_score *= 1.2
             
-            final_scores[company] = base_score
+            # 순매수 가중치 적용
+            purchase_score = self.net_purchase_weights.get(company, 0.0)
+            total_score = base_score + (purchase_score * purchase_weight)
+            
+            final_scores[company] = total_score
         
         # 6. 상위 k개 결과만 반환
         final_results = sorted(

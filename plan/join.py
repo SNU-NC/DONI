@@ -161,7 +161,7 @@ def create_joiner(llm: BaseChatModel):
     from datetime import datetime
     current_time = datetime.now().strftime("%Y-%m-%d")
     
-    joiner_prompt = hub.pull("snunc/rag-llm-compiler-joiner-v2").partial(
+    joiner_prompt = hub.pull("snunc/rag-llm-compiler-joiner-v3").partial(
         examples="", 
         time=current_time,
         format_instructions=""
@@ -183,11 +183,11 @@ def create_joiner(llm: BaseChatModel):
     
     def should_use_final_answer(state: Dict[str, Any]) -> bool:
         # true 면 replan 답변을 사용하고, false 면 normal 답변을 사용한다.
-        should_use_final_answer = False
+        print(f"should_use_final_answer의 state확인: {state}")
+        should_use_final_answer = state["force_final_answer"]
         if state["replan_count"] >= 2:
-            should_use_final_answer = True
-            print("shoud we use final answer?" , " yes")
-        print("shoud we use final answer?" , " no")
+            print("shoud we use final answer?" , " yes" , state["replan_count"])
+        print("shoud we use final answer?" , " no", state["replan_count"])
         return should_use_final_answer
     
     final_answer_path = RunnableBranch(

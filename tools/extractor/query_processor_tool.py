@@ -164,6 +164,11 @@ class QueryProcessor:
                 else:
                     print("- 적절한 회사를 찾지 못했습니다.")
 
+                    print("- 하이퍼클로바 대신 적절한 회사를 추가합니다.")
+                    final_company = candidates[0]
+                    final_companies.append(final_company)
+                    print(f"- 최종 선택된 회사명: {final_company}")
+
         # Step 1 결과가 없는 경우
         else:
             final_companies = []

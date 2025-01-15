@@ -91,8 +91,12 @@ def select_recent_messages(state) -> dict:
                         print(f"숫자 형태의 문자열 처리: {message.content}")
                         output_list.append(message.content)
                     except ValueError:  # 숫자로 변환 실패 시 (일반 문자열)
+                        print(f"숫자로 변환 실패 시, 문자열 처리: {message.content}")
                         dict_content = literal_eval(message.content)
-                        output_list.append(dict_content['output'])
+                        if isinstance(dict_content['output'], dict):
+                            output_list.append(str(dict_content['output']))
+                        else : 
+                            output_list.append(dict_content['output'])
                         print(f"message.content: {dict_content}")
                         print(f"dict_content['output']: {dict_content['output']}")
                 else:
@@ -136,19 +140,18 @@ def check_replan_count(state: dict):
     replan_count = state["replan_count"]
     output_list = state["output_list"]
     if replan_count >= 2:
-        logging.info(f"Replan count exceeded ({replan_count}), forcing final answer")
+        print(f"check replan count: {replan_count} forcing final answer")
         return {
             "messages": messages,
             "replan_count": replan_count,
             "force_final_answer": True
         }
-    logging.info(f"Current replan count: {replan_count}, continuing normal path")
-
+    print(f"check replan count: {replan_count} continuing")
     return {
         "messages":[SystemMessage(content=msg) for msg in output_list],
         "replan_count": replan_count,
         "force_final_answer": False,
-       # "output_list": output_list
+        "output_list": output_list
     }
 
 

@@ -11,15 +11,16 @@ from selenium.common.exceptions import TimeoutException
 import os
 from typing import Optional, Dict, Any
 from langchain_openai import ChatOpenAI
+from langchain_community.chat_models import ChatClovaX
 import pandas as pd
 import os
 import time
 import re
 from langchain.callbacks.manager import CallbackManagerForToolRun
 from config.prompts import _STOCK_ANL_DESCRIPTION
-api_key=os.getenv("OPENAI_API_KEY")
+api_key=os.getenv("CLOVA_API_KEY")
 # API 키와 Gateway API 키를 넣습니다.
-os.environ["OPENAI_API_KEY"] = api_key
+os.environ["CLOVA_API_KEY"] = api_key
 
 
 
@@ -28,10 +29,10 @@ os.environ["OPENAI_API_KEY"] = api_key
 class StockAnalyzer:
     def __init__(self, api_key=None):
         load_dotenv()
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+        self.api_key = api_key or os.getenv("CLOVA_API_KEY")
 
         if not self.api_key:
-            raise ValueError("OpenAI API 키를 찾을 수 없습니다.")
+            raise ValueError("HyperCLOVA-X API 키를 찾을 수 없습니다.")
 
     def clean_rate(self, rate):
         try:
@@ -267,10 +268,15 @@ class StockAnalyzer:
                 titles = [news.text for news in news_elements[:15]]
                 #print(f"{key} 기준 수집된 뉴스 제목:", titles)
 
-                llm = ChatOpenAI(
-                    model_name="gpt-4o",
-                    openai_api_key=self.api_key
-                )
+                # llm = ChatOpenAI(
+                #     model_name="gpt-4o",
+                #     openai_api_key=self.api_key
+                # )
+                llm = ChatClovaX(
+                    model="HCX-003", 
+                    clovastudio_api_key=self.api_key, 
+                    temperature=0.1
+                    )
 
                 question = (
                     f"다음 뉴스 제목들 {titles}을 바탕으로 {corpname} 주식이 변동한 이유를 분석해주세요. "
@@ -280,7 +286,7 @@ class StockAnalyzer:
                     f"{'긍정적인' if key == '양수_최대' else '부정적인'} 이슈를 중심으로 분석해주세요."
                 )
 
-                response = llm(question)
+                response = llm.invoke(question)
                 analysis_results[key] = response.content
 
             return analysis_results

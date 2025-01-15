@@ -6,6 +6,7 @@ import time
 from dotenv import load_dotenv
 import os
 from langchain_openai import ChatOpenAI
+from langchain_community.chat_models import ChatClovaX
 import pandas as pd
 from typing import Optional, Dict, Any
 from typing import Type
@@ -16,9 +17,9 @@ import ast
 import yfinance as yf
 from config.prompts import _SameSectorComplare_ANL_DESCRIPTION
 
-api_key=os.getenv("OPENAI_API_KEY")
+api_key=os.getenv("CLOVA_API_KEY")
 # API 키와 Gateway API 키를 넣습니다.
-os.environ["OPENAI_API_KEY"] = api_key
+os.environ["CLOVA_API_KEY"] = api_key
 
 
 #사전에 만들어진 코스피 기업명과 코드 데이터프레임 
@@ -121,10 +122,14 @@ class SameSectorAnalyzer:
     def analyze_sector(self):
         if not api_key:
             raise ValueError("OpenAI API 키를 찾을 수 없습니다.")
-        llm = ChatOpenAI(
-            model_name="gpt-4o",
-            openai_api_key=api_key
-        )
+        # llm = ChatOpenAI(
+        #     model_name="gpt-4o",
+        #     openai_api_key=api_key
+        # )
+        llm = ChatClovaX(
+            model="HCX-003", 
+            clovastudio_api_key=api_key, 
+            temperature=0.1)
 
         # 기업 데이터를 잘 포맷팅하여 question에 전달
         formatted_data = "\n".join([", ".join([str(value) for value in row.values()]) for row in self.company_data])

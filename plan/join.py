@@ -145,7 +145,7 @@ def check_replan_count(state: dict):
     logging.info(f"Current replan count: {replan_count}, continuing normal path")
 
     return {
-        "messages":[SystemMessage(content=msg) for msg in output_list],
+        "messages": [SystemMessage(content=str(msg)) for msg in output_list],
         "replan_count": replan_count,
         "force_final_answer": False,
        # "output_list": output_list

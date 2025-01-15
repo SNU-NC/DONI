@@ -98,7 +98,7 @@ class CombinedFinancialReportSearchTool(BaseTool):
             messages = [
                 (
                     "system",
-                    COMBINED_FINANCIAL_REPORT_PROMPT
+                    COMBINED_FINANCIAL_REPORT_PROMPT.format(query=query)
                 ),
                 (
                     "human",

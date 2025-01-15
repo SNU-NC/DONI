@@ -15,6 +15,7 @@ class FinancialReportInputSchema(BaseModel):
     query: str = Field(..., description="검색 문장")
     company: str = Field(..., description="검색 회사명")
     year: int = Field(default=2023, description="검색 연도")
+    key_word: str = Field(..., description="공백 없는 검색을 하고 싶은 정보에 무조건 있을 수 있는 단어 (예시: 손해보험업, 영업이익, ROE, 사업부문, 배당금, 보험료)")
 
 class FinancialReportTool(BaseTool):
     """사업보고서 검색을 위한 RAG 시스템 도구"""
@@ -37,6 +38,7 @@ class FinancialReportTool(BaseTool):
         year: int = 2023,
         top_k: int = 5, 
         rewrite: bool = True, 
+        key_word: Optional[str] = None,
         run_manager: Optional[CallbackManagerForToolRun] = None
     ) -> str:
         try:
@@ -46,14 +48,15 @@ class FinancialReportTool(BaseTool):
                 query=query, 
                 k=top_k, 
                 rewrite=rewrite,
-                metadata={"companyName": company, "year": year}
+                metadata={"companyName": company, "year": year},
+                table_search=key_word
             )
             if not results:
                 return (
                     f"'{query}'에 대한 검색 결과를 찾을 수 없습니다.\n"
                     "다음과 같은 방법을 시도해보세요:\n"
                     "1. 더 구체적인 검색어로 다시 시도\n"
-                    "2. 유사한 의미의 다른 사업보고서 관련 검색어 사용\n"
+                     "2. 유사한 의미의 다른 사업보고서 관련 검색어 사용\n"
                     "만약 계속해서 결과가 없다면, 다른 정보 소스나 도구 사용을 고려해보세요."
                 )
             
@@ -69,6 +72,7 @@ class FinancialReportTool(BaseTool):
         year: int = 2023,
         top_k: int = 5, 
         rewrite: bool = False, 
+        account_name: Optional[str] = None,
         run_manager: Optional[AsyncCallbackManagerForToolRun] = None
     ) -> str:
         try:
@@ -76,7 +80,8 @@ class FinancialReportTool(BaseTool):
                 query=query, 
                 k=top_k, 
                 rewrite=rewrite,
-                metadata={"companyName": company, "year": year}
+                metadata={"companyName": company, "year": year},
+                table_search=account_name
             )
             if not results:
                 return (

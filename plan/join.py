@@ -179,9 +179,13 @@ def create_joiner(llm: BaseChatModel):
     replan_fail_path = final_prompt | llm.with_structured_output(JoinOutputs)
     
     def should_use_final_answer(state: Dict[str, Any]) -> bool:
-        result = state["force_final_answer"]
-        logging.info(f"Should use final answer? {result}")
-        return state["force_final_answer"]
+        # true 면 replan 답변을 사용하고, false 면 normal 답변을 사용한다.
+        should_use_final_answer = False
+        if state["replan_count"] >= 2:
+            should_use_final_answer = True
+            print("shoud we use final answer?" , " yes")
+        print("shoud we use final answer?" , " no")
+        return should_use_final_answer
     
     final_answer_path = RunnableBranch(
         (should_use_final_answer, replan_fail_path),

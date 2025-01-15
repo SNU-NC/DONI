@@ -140,6 +140,12 @@ class QueryProcessor:
                 print(f"- 추출된 후보 수: {len(candidates)}")
                 print(f"- 추출된 후보 목록: {candidates}")
                 
+                # 후보가 1개라면 Step 3 작업 패스 (그 회사를 그대로 반환)
+                if len(candidates) == 1:
+                    final_companies.append(candidates[0])
+                    print(f"- 최종 선택된 회사명: {final_companies}")
+                    continue
+
                 # Step 3: HyperCLOVA-X가 최종 회사명 결정
                 print(f"\n[Step 3: {potential_company}에 대한 HyperCLOVA-X 최종 선택 중...]")
                 
@@ -157,9 +163,6 @@ class QueryProcessor:
                     print(f"- 최종 선택된 회사명: {final_company}")
                 else:
                     print("- 적절한 회사를 찾지 못했습니다.")
-
-                    print("- 후처리를 실행합니다. 왜 하는지는 하이퍼클로바한테 물어봐요.")
-                    final_companies.append(candidates[0])
 
         # Step 1 결과가 없는 경우
         else:

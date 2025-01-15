@@ -1,30 +1,10 @@
 # Tool Descriptions 
 _Financial_RAG_DESCRIPTION = """
- - financial_report_search(query: str, company: str, year: int) -> str
- - 별도의 재무제표에서 검색하라는 요청이 없다면, 연결 재무제표에서 검색하라는 쿼리를 작성해주세요
-재무제표 예상 내용:
-- 재무상태표: "자산, 부채 및 자본의 구성", "유동자산 및 비유동자산의 세부 내역"
-- 손익계산서: "매출액, 영업이익, 당기순이익", "비용 항목별 세부 내역"
-- 현금흐름표: "영업활동, 투자활동, 재무활동으로 인한 현금흐름", "현금 및 현금성 자산의 변동"
-
-예시:
-질문: "금양 주요 사업이 뭐야?"
-답변: "금양의 주요 사업내용과 영업의 개황에 관한 사항**"
-
-질문: "현대차 연결기준 매출액이랑 영업이익 얼마야?"
-답변: "현대자동차의 연결재무제표 상 매출액과 영업이익에 대한 상세 내용**"
-
-질문: "LG화학 최대주주 지분율?"
-답변: "LG화학의 최대주주 및 특수관계인의 주식 소유현황과 최근 지분율 변동에 관한 사항**"
-
-질문: "포스코 연결기준 부채비율이랑 유동비율은?"
-답변: "포스코홀딩스의 연결재무제표 기준 부채비율과 유동비율에 대한 세부내용**"
-
-질문: "삼성전자 연결기준 해외매출 비중이 어떻게 돼?"
-답변: "삼성전자의 연결재무제표 상 해외매출 비중과 지역별 매출 구성에 대한 분석**"
-
-#### 주의사항
-쿼리에 정확히 어느 표에서 검색해야할지 명시해주세요, 모호하다면 연결재무제표중에서 검색할 수 있게 쿼리를 작성하세요.
+ - financial_report_search(query: str, company: str, year: int, key_word: str) -> str
+ - 사업보고서, 재무보고서를 검색하는 검색기입니다.
+ - 재무제표에서 검색하지 못한 정보, 각 기업별로 가지고 있는 고유한 정보들이 있습니다.
+ - 쿼리는 원하는 하나의 정보만 입력해야 합니다.
+ - key_word는 정확히 검색하고자하는 키워드를 입력해주세요
 """
 
 _Financial_TABLE_DESCRIPTION =  """
@@ -51,7 +31,10 @@ combined_financial_report_search(query: str, company: str, year: int) -> str
   combined_financial_report_search(query: "2023년 부채총계, 현금성자산을 찾아주세요", company: "카카오", year: 2023)
 - 예시 4:
   사용자 질문 : 롯데손해보험의 당기순이익을 기준으로 ROA((당기순이익 / 총자산) × 100)를 구해주세요
-  combined_financial_report_search(query: "2023년 당기순이익, 총자산은 재무제표에서, ROA를 찾아주세요", company: "롯데손해보험", year: 2023)
+  combined_financial_report_search(query: "2023년 당기순이익, 총자산, ROA를 찾아주세요", company: "롯데손해보험", year: 2023)
+- 예시 5:
+  사용자 질문 : HL만도의 최근 연결 재무제표에서 주당순이익(당기순이익 / 가중평균유통주식수) (EPS(당기순이익 / 가중평균유통주식수))은 얼마로 표시되어 있나요?
+  combined_financial_report_search(query: "2023년 당기순이익, 총자산, 주당순이익, EPS를 찾아주세요", company: "HL만도", year: 2023)
 """
 
 _Analyst_RAG_DESCRIPTION = """

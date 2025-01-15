@@ -161,7 +161,7 @@ def create_joiner(llm: BaseChatModel):
     from datetime import datetime
     current_time = datetime.now().strftime("%Y-%m-%d")
     
-    joiner_prompt = hub.pull("snunc/rag-llm-compiler-joiner-v3").partial(
+    joiner_prompt = hub.pull("sumin/rag-llm-compiler-joiner-v4").partial(
         examples="", 
         time=current_time,
         format_instructions=""

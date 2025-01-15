@@ -52,7 +52,7 @@ class FinancialStatementTool(BaseTool):
             dfs = []
             latest_rcp_no = None
             
-            for y in range(year, year-3, -1):
+            for y in range(year+1, year-3, -1):
                 df = self.dart.finstate_all(companyName, y, reprt_code="11011")
                 if df is None or df.empty:
                     df = self.dart.finstate(companyName, y, reprt_code="11011")

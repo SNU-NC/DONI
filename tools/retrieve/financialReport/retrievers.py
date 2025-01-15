@@ -232,30 +232,56 @@ class RetrievalManager:
             base_retriever=base_retriever,
         )
     
-    def create_retriever(self, k: int = 4, use_mmr: bool = True, metadata_filter: Optional[Dict[str, Any]] = None) -> Any:
-        """메타데이터 필터를 사용하는 검색기 생성
-        
-        Args:
-            k (int): 반환할 문서 수
-            use_mmr (bool): MMR 사용 여부
-            metadata (Optional[Dict]): 메타데이터 필터 (예: {"companyName": "삼성전자", "year": 2023})
-        """
-        # 메타데이터를 ChromaDB 필터 형식으로 변환
+    def create_retriever(self, k: int = 4, use_mmr: bool = True, metadata_filter: Optional[Dict[str, Any]] = None, table_search: Optional[str] = None) -> Any:
+        """메타데이터 필터를 사용하는 검색기 생성"""
         filter_dict = {}
-        if metadata_filter:
+        where_document = None
+        
+        if metadata_filter or table_search:
             filter_conditions = []
-            if 'companyName' in metadata_filter:
-                filter_conditions.append({"companyName": metadata_filter['companyName']})
-            if 'year' in metadata_filter:
-                filter_conditions.append({"year": metadata_filter['year']})
+            
+            # 기본 메타데이터 필터 처리
+            if metadata_filter:
+                for key, value in metadata_filter.items():
+                    filter_conditions.append({key: {"$eq": value}})
+            
+            # 테이블 검색을 메타데이터 필터에 추가
+            if table_search:
+                filter_conditions.append({"table": {"$eq": table_search}})
+            
             if filter_conditions:
+                filter_dict = {"$and": filter_conditions} if len(filter_conditions) > 1 else filter_conditions[0]
+        
+        # 문서 내용 검색을 위한 조건
+        if table_search:
+            where_document = {
+                "$contains": table_search  # page_content 검색
+            }
+        
+        # 검색 결과 확인
+        table_results = self.vectorstore.similarity_search_with_score(
+            query="",  # 빈 쿼리로 메타데이터 필터만 적용
+            k=k,
+            filter=filter_dict,
+            where_document=where_document
+        )
+        
+        # 검색 결과가 없는 경우 처리
+        if not table_results and table_search:
+            # 메타데이터 필터만 사용
+            filter_dict = {}
+            if metadata_filter:
+                filter_conditions = [
+                    {key: value} for key, value in metadata_filter.items()
+                ]
                 filter_dict = {"$and": filter_conditions} if len(filter_conditions) > 1 else filter_conditions[0]
         
         search_kwargs = {
             "k": k,
             "filter": filter_dict,
+            "where_document": where_document,
             "fetch_k": k * 4 if use_mmr else k,
-            "lambda_mult": 0.65 if use_mmr else None
+            "lambda_mult": 0.73 if use_mmr else None
         }
         
         if use_mmr:
@@ -271,7 +297,7 @@ class RetrievalManager:
                 
         return retriever
 
-    def get_retriever_results(self, query: str, k: int = 4, rewrite: bool = True, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def get_retriever_results(self, query: str, k: int = 4, rewrite: bool = True, metadata: Optional[Dict[str, Any]] = None, table_search: Optional[str] = None) -> Dict[str, Any]:
         """검색기 결과 반환"""
         from tools.retrieve.financialReport.prompts import output_parser
         rcept_no_title = ""
@@ -289,16 +315,17 @@ class RetrievalManager:
             | output_parser
         )
 
-        def perform_search(metadata_filter):
+        def perform_search(metadata_filter, table_search):
             base_retriever = self.create_retriever(
                 k=k, 
-                metadata_filter=metadata_filter
+                metadata_filter=metadata_filter,
+                table_search=table_search
             )
             compression_retriever = self.create_compression_retriever(base_retriever)
             return compression_retriever.invoke(query)
 
         # 첫 번째 검색 수행
-        results_docs = perform_search(metadata)
+        results_docs = perform_search(metadata, table_search)
         
         # 2024년 검색 결과가 없고, 현재 연도가 2024년인 경우 2023년 데이터로 재검색
         if (not results_docs and 
@@ -306,7 +333,7 @@ class RetrievalManager:
             metadata.get('year') == 2024 or metadata.get('year') == 2025):
             metadata_2023 = metadata.copy()
             metadata_2023['year'] = 2023
-            results_docs = perform_search(metadata_2023)
+            results_docs = perform_search(metadata_2023, table_search)
             if results_docs:
                 # 2023년 데이터를 찾았다는 메시지 추가
                 prefix_message = f"[{metadata.get('year')}년 데이터가 없어 {metadata.get('year')-1}년 데이터를 검색했습니다]\n"

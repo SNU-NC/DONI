@@ -150,6 +150,9 @@ def format_table(table_data: Any) -> str:
                 df = df.iloc[1:]
                 # TH 접두사 제거
                 df.columns = [str(col).replace('TH', '') for col in df.columns]
+                # NaN 값이나 공백으로만 이뤄진 값들을 NULL로 대체
+                df.replace(to_replace=r'^\s*$', value='NULL', regex=True, inplace=True)
+                df.fillna('NULL', inplace=True)
             return df.to_string(index=False)
     except Exception as e:
         print(f"Error: {e}")  # 디버깅용

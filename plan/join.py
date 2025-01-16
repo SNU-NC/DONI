@@ -24,7 +24,6 @@ class FinalResponse(BaseModel):
 class JoinerState(TypedDict):
     messages: List[BaseMessage]
     replan_count: int
-    force_final_answer: bool
 
 class Replan(BaseModel):
     """Feedback for replanning."""
@@ -63,6 +62,7 @@ def select_recent_messages(state) -> dict:
     """Select the most recent messages up to the last human message."""
     messages = state["messages"]
     replan_count = state["replan_count"]
+    print(f"select_recent_messages의 replan_count 확인 {replan_count}")
     task_results = state.get("task_results", [])
     
     # output 수집 
@@ -185,7 +185,7 @@ def create_joiner(llm: BaseChatModel):
         # true 면 replan 답변을 사용하고, false 면 normal 답변을 사용한다.
         print(f"should_use_final_answer의 state확인: {state}")
         should_use_final_answer = state["force_final_answer"]
-        if state["replan_count"] >= 2:
+        if state["replan_count"] >= 1:
             print("shoud we use final answer?" , " yes" , state["replan_count"])
         print("shoud we use final answer?" , " no", state["replan_count"])
         return should_use_final_answer
@@ -205,6 +205,7 @@ def create_joiner(llm: BaseChatModel):
     
     # 체인을 쓸지 말지 결정
     def conditional_joiner(state: Dict[str, Any]) -> Dict[str, Any]:
+        print(f"conditional_joiner's replan_count 확인: {state['replan_count']}")
         report_agent_use = state.get("report_agent_use", False)
         
         # task_results에서 key_information 수집 및 중복 제거

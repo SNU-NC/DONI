@@ -227,6 +227,7 @@ class Planner:
         @as_runnable
         def plan_and_schedule(state: Dict[str, Any]) -> Dict[str, Any]:
             messages = state["messages"]
+            print("Plan*Scheduler 시작할 때의 replan Count를 체크하겠습니다. ", state.get("replan_count", 404))
             try:
                 # 1. 원본 쿼리 ( = user query )
                 original_query = messages[0].content
@@ -255,7 +256,7 @@ class Planner:
                     # 상위 레벨(should_continue)에서 이 값을 확인해 종료 처리
                     return {
                         "messages": [result_message],
-                        "replan_count": state.get("replan_count", 0),
+                        "replan_count": state.get("replan_count", 1),
                         "report_agent_use": True
                     }
 
@@ -264,10 +265,10 @@ class Planner:
                     initial_tasks = list(planner.stream(messages))
                     if not initial_tasks:
                         logging.warning("초기 태스크 생성 실패: 빈 태스크 리스트")
-                        return {"messages": [], "replan_count": state.get("replan_count", 0)}
+                        return {"messages": [], "replan_count": state.get("replan_count", 1)}
                 except Exception as e:
                     logging.error(f"초기 태스크 생성 중 오류 발생: {e}")
-                    return {"messages": [], "replan_count": state.get("replan_count", 0)}
+                    return {"messages": [], "replan_count": state.get("replan_count", 1)}
 
                 # 2. task 스케줄링
                 try:
@@ -292,9 +293,11 @@ class Planner:
                 # 6. replan count 관리
                 if "replan_count" not in state:
                     state["replan_count"] = 0
-                    logging.info("replan_count 초기화")
-                state["replan_count"] = state["replan_count"] + 1
-                logging.info(f"replan_count 증가: {state['replan_count']}")
+                    print("replan_count 초기화", state["replan_count"])
+                else : 
+                    state["replan_count"] = state["replan_count"] + 1
+                    print("replan_count 증가", state["replan_count"])
+                
 
                 return {
                     "messages": scheduled_tasks, 
@@ -306,7 +309,7 @@ class Planner:
                 logging.error(f"plan_and_schedule 전체 실행 중 예기치 않은 오류: {e}")
                 return {
                     "messages": [], 
-                    "replan_count": state.get("replan_count", 0),
+                    "replan_count": state.get("replan_count", 1),
                     "task_results": state.get("task_results", [])  # 기존 task_results 유지
                 }
 

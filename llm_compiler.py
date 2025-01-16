@@ -71,7 +71,7 @@ def initialize_chain():
             return END
 
         if isinstance(messages[-1], AIMessage):
-            if replan_count >= 2:
+            if replan_count >= 1:
                 print("replan_count 이거 때문에 죽음   : ", replan_count)
             return END
         return "plan_and_schedule"

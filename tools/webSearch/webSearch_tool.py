@@ -15,6 +15,7 @@ load_dotenv()
 
 class WebSearchInputSchema(BaseModel):
     query: str = Field(..., description="구글, 네이버 검색에 최적화된 문장")
+    company: Optional[str] = Field(None, description="검색할 회사명")
 
 class SearchEngine(ABC):
     """Abstract base class for search engines"""
@@ -50,10 +51,15 @@ class GoogleSearch(SearchEngine):
                 
             search_results = []
             for item in results["items"][:5]:
+                link = item.get('link', 'No link')
+                # 블로그 도메인 필터링
+                if 'tistory.com' in link or 'blog.naver.com' in link:
+                    continue
+                    
                 search_results.append({
                     "tool": "검색 도구[구글]",
                     "title": item.get('title', 'No title'),
-                    "link": item.get('link', 'No link'),
+                    "link": link,
                     "referenced_content": item.get('snippet', 'No description')
                 })
                 
@@ -95,13 +101,18 @@ class NaverSearch(SearchEngine):
                 
             search_results = []
             for item in results["items"][:5]:
+                link = item.get('link', 'No link')
+                # 블로그 도메인 필터링
+                if 'tistory.com' in link or 'blog.naver.com' in link:
+                    continue
+                    
                 title = item.get("title", "No title").replace("<b>", "").replace("</b>", "")
                 description = item.get("description", "No description").replace("<b>", "").replace("</b>", "")
                 
                 search_results.append({
                     "tool": "검색 도구[네이버]",
                     "title": title,
-                    "link": item.get('link', 'No link'),
+                    "link": link,
                     "referenced_content": description
                 })
                 
@@ -210,10 +221,12 @@ class WebSearchTools(BaseTool):
     def _run(
         self,
         query: str,
+        company: Optional[str] = None,
         run_manager: Optional[CallbackManagerForToolRun] = None
     ) -> dict:
         try:
-            search_query = query
+            # company가 None일 경우 query만 사용
+            search_query = f"{company} {query}" if company else query
             
             # 검색 실행
             print(f"검색 쿼리: {search_query}")
@@ -234,7 +247,8 @@ class WebSearchTools(BaseTool):
     async def _arun(
         self,
         query: str,
+        company: Optional[str] = None,
         run_manager: Optional[AsyncCallbackManagerForToolRun] = None
     ) -> str:
         """비동기 실행은 동기 실행과 동일한 로직 사용"""
-        return self._run(query=query, run_manager=run_manager)
+        return self._run(query=query, company=company, run_manager=run_manager)

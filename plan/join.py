@@ -1,12 +1,21 @@
 import logging
 from typing import List, Union, Dict, Any
 from langchain import hub
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, BaseMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, BaseMessage , FunctionMessage
 from langchain_core.language_models import BaseChatModel
 from pydantic import BaseModel, Field
 from langchain_core.runnables import RunnableBranch, RunnableLambda
 from typing import TypedDict
+import json
+import logging
+from ast import literal_eval
 
+# 로깅 설정
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 class FinalResponse(BaseModel):
     """The final response/answer."""
     response: str = Field(description="사용자 질문에 대한 상세한 답변")
@@ -56,6 +65,46 @@ def select_recent_messages(state) -> dict:
     replan_count = state["replan_count"]
     task_results = state.get("task_results", [])
     
+    # output 수집 
+    output_list = []
+    for message in messages:
+        print(f"type of message: {type(message)}")
+        print(f"message.content: {message.content}")
+        print(f"message.content type: {type(message.content)}")
+        print(f"메세지 타입 확인, isHumanMessage: {isinstance(message, HumanMessage)}")
+        print(f"메세지 타입 확인, isFunctionMessage: {isinstance(message, FunctionMessage)}")
+        try :
+            if isinstance(message, HumanMessage):
+                output_list.append(message.content)
+            elif message.content == 'join':   #메세지 내용이 join인 경우에는 무시 
+                print("join 메세지 왔습니다~~~~")
+                continue
+            elif isinstance(message.content, (float, int)):  # float나 int 타입 체크
+                print(f"숫자 타입 메시지 처리: {message.content}")
+                output_list.append(str(message.content))
+            elif isinstance(message, FunctionMessage):
+                print("FunctionMessage에 왔습니다~~~~")
+                if isinstance(message.content, str):
+                    # 숫자 형태의 문자열인지 확인
+                    try:
+                        float(message.content)  # 숫자로 변환 시도
+                        print(f"숫자 형태의 문자열 처리: {message.content}")
+                        output_list.append(message.content)
+                    except ValueError:  # 숫자로 변환 실패 시 (일반 문자열)
+                        dict_content = literal_eval(message.content)
+                        output_list.append(dict_content['output'])
+                        print(f"message.content: {dict_content}")
+                        print(f"dict_content['output']: {dict_content['output']}")
+                else:
+                    print(f"FunctionMessage이지만 문자열이 아닌 타입: {type(message.content)}")
+
+
+        except Exception as e:
+            print(f"예외 발생: {e}, 메시지 타입: {type(message.content)}")
+            continue
+    print("^^^^^^^^^^^^^^^^^^^^ logging for output_list ^^^^^^^^^^^^^^^^^^^^")
+    print(f"output_list: {output_list}")       
+    print("^^^^^^^^^^^^^^^^^^^^ logging for output_list  END ^^^^^^^^^^^^^^^^^^^^")
     # key_information 수집
     all_key_information = []
     for result in task_results:
@@ -63,7 +112,10 @@ def select_recent_messages(state) -> dict:
             if 'result' in result and isinstance(result['result'], dict):
                 if 'key_information' in result['result']:
                     all_key_information.extend(result['result']['key_information'])
-    
+    print("^^^^^^^^^^^^^^^^^^^^ logging for messages ^^^^^^^^^^^^^^^^^^^^")
+    print(f"messages: {messages}")
+    print(f"message_type: {type(messages)}")
+    print("^^^^^^^^^^^^^^^^^^^^ logging for messages  END ^^^^^^^^^^^^^^^^^^^^")
     selected = []
     for msg in messages[::-1]:
         selected.append(msg)
@@ -73,7 +125,8 @@ def select_recent_messages(state) -> dict:
     return {
         "messages": selected[::-1], 
         "replan_count": replan_count,
-        "key_information": all_key_information
+        "key_information": all_key_information,
+        "output_list": output_list
     }
 
 
@@ -81,7 +134,7 @@ def check_replan_count(state: dict):
     """Check replan count and decide next step."""
     messages = state["messages"]
     replan_count = state["replan_count"]
-    
+    output_list = state["output_list"]
     if replan_count >= 2:
         logging.info(f"Replan count exceeded ({replan_count}), forcing final answer")
         return {
@@ -92,9 +145,10 @@ def check_replan_count(state: dict):
     logging.info(f"Current replan count: {replan_count}, continuing normal path")
 
     return {
-        "messages": messages,
+        "messages": [SystemMessage(content=str(msg)) for msg in output_list],
         "replan_count": replan_count,
-        "force_final_answer": False
+        "force_final_answer": False,
+       # "output_list": output_list
     }
 
 

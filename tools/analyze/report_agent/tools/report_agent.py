@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Dict, List, Optional, Any
 from langchain_openai import ChatOpenAI
+from langchain_community.chat_models import ChatClovaX
 from tools.analyze.report_agent.tools.report_agent_utils import get_ticker, extract_segment, yoy_calculator, consensusCalculator, combine_report
 from tools.analyze.report_agent.tools.yoy_prediction import yoyPrediction
 from tools.analyze.report_agent.tools.predict_next_qt import predictNextQuarter
@@ -27,9 +28,9 @@ class State(BaseModel):
     result: Dict[str, str] = Field(description="결과", default_factory=dict)
 
 class ReportAgentManager:
-    def __init__(self, llm: Optional[ChatOpenAI] = None):
+    def __init__(self, llm: Optional[ChatClovaX] = None):
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.llm = llm or ChatOpenAI(model="gpt-4o", temperature=0)
+        self.llm = llm or ChatClovaX(model="HCX-003", temperature=0.1)
         self.consensus_df = pd.read_csv("tools/analyze/report_agent/tools/data/consensus_result.csv")
         self.state = State()
         # 프로젝트 루트 디렉토리 설정

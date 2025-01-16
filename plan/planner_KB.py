@@ -103,11 +103,23 @@ class Planner:
                 similar_examples = self.plan_store.get_similar_examples(query)
                 print("logging for similar_examples")
                 print(similar_examples)
-                # 4. 결과 포맷팅
+
+                # 4. extra_info가 있다면 원본 메시지에 추가
+                for example in similar_examples:
+                    if example.extra_info:
+                        # 기존 메시지 내용에 extra_info 추가
+                        original_content = messages[-1].content
+                        agmentedContent=f"{original_content}\n\n[참고사항] {example.extra_info}"
+
+                        messages[-1].content = agmentedContent
+                
+                # 5. 결과 포맷팅
                 planning_candidates = "\n\n".join([
-                    f"사용자의 질문과 유사하다면 다음 계획 예시를 참고하세요: " +
-                    f" EXAMPLE {i+1} (Query: {example.query}):\n" + 
-                    "\n".join([f"- {step}" for step in example.plan.steps])
+                    "사용자의 질문과 유사하다면 다음 계획 예시를 참고하세요:\n" +
+                    "<EXAMPLE>\n" +
+                    f"Query: {example.query}\n" + 
+                    "\n".join([f"- {step}" for step in example.plan.steps]) +
+                    "\n</EXAMPLE>"
                     for i, example in enumerate(similar_examples)
                 ])
                 
@@ -135,8 +147,10 @@ class Planner:
             사용자 질문에 연도가 존재하지 않다면, 검색 연도를 2023년으로 도구들에게 질의하세요.
             
             ### combined_financial_report_search 도구 사용 시 주의사항
-            - 기업당 1회만 호출이 가능하므로 최대한 자세하게 필요한 정보를 한번에 요청하세요
-            - 예시) "2023년 영업이익과 당기순이익, 부채비율, 유동비율, 영업활동현금흐름 등 주요 재무지표와 실적 현황을 모두 알려주세요"
+            - 기업당 1회만 호출이 가능하므로 연도가 다양해도 최대한 자세하게 필요한 정보를 한번에 요청하세요
+            - 예시) "2021,2022,2023년 연구개발비 추이를 알려주세요" 
+            - 여러 기업을 비교할 때도 기업별로 1회씩만 호출하여 여러 연도의 데이터를 한번에 요청하세요
+            - 예시) 기업A: "2021,2022,2023년 연구개발비", 기업B: "2021,2022,2023년 연구개발비"
             - 연도와 필요한 계정명을 사용자 쿼리에서 파악하여 이를 포함하세요
             
             ### 다른 도구 사용 시 주의사항
@@ -180,6 +194,25 @@ class Planner:
         planner = self.planner
         llm = self.llm
         llm_mini = self.llm_mini
+        def is_in_report_agent(company_name: str) -> bool:
+            # 리포트 에이전트에서 처리할 수 없는 기업인지 확인 
+                # 리포트 에이전트가 처리할 수 있는 기업 목록
+            report_companies = {
+                "SK하이닉스": "000660",
+                "대한항공": "003490",
+                "대한항공우": "003495",
+                "포스코퓨처엠": "003670",
+                #"현대차": "005380",
+                "SK텔레콤": "017670",
+                "삼성전자": "005930",
+                "두산에너빌리티": "034020",
+                "NAVER": "035420",
+                "카카오": "035720",
+                "넷마블": "251270",
+                "LG에너지솔루션": "373220"
+            }
+
+            return company_name in report_companies
 
         @as_runnable
         def plan_and_schedule(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -188,8 +221,6 @@ class Planner:
                 # 1. 원본 쿼리 ( = user query )
                 original_query = messages[0].content
 
-
-                
                 # replan_count가 없을 때만 fin_tool 실행
                 input_query = original_query
                 if "replan_count" not in state:
@@ -202,8 +233,12 @@ class Planner:
                 logging.info(f"원본 쿼리: {original_query}")
                 logging.info(f"FinTool 사용 후의 쿼리: {input_query}")
                 
+                # 리포트 에이전트에서 처리할 수 없는 기업인지 확인 
+                is_report_can = is_in_report_agent(metadata["companyName"])
+                print("is_report_can:", is_report_can)
+
                 # report_agent_use 판단
-                if is_valid_query(original_query):
+                if is_valid_query(original_query) and is_report_can:
                     logging.info("report_agent_use 판단 시작")
                     result_message = self.report_agent_tool.invoke({"query": original_query, "metadata": metadata})
                     logging.info("report_agent_tool 사용 후 바로 종료합니다.")
@@ -213,7 +248,7 @@ class Planner:
                         "replan_count": state.get("replan_count", 0),
                         "report_agent_use": True
                     }
-                
+
                 try:
 
                     initial_tasks = list(planner.stream(messages))

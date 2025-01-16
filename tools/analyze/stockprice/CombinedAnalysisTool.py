@@ -7,6 +7,7 @@ from typing import Optional, Dict, Any
 from langchain_core.tools import BaseTool
 from langchain.callbacks.manager import CallbackManagerForToolRun
 from config.prompts import _CombinedAnalysisTool_DESCRIPTION
+import pandas as pd
 
 
 # 입력 스키마 정의
@@ -78,7 +79,6 @@ class CombinedAnalysisTool(BaseTool):
 
     def _run(self, query: str, company:str, year:int, run_manager: Optional[CallbackManagerForToolRun] = None) -> str:
         try:              
-
             results = {}
 
             # CompanyAnalyzerTool 실행
@@ -93,7 +93,52 @@ class CombinedAnalysisTool(BaseTool):
             #print("Running DCFTool...")
             results["dcf"] = self.dcf_tool.run({"company_name": company})
 
-            return results
+            # 종목코드 찾기
+            df = pd.read_csv('data/kospi_list.csv')
+            stock_code = df[df['종목명'] == company]['종목코드'].iloc[0]
+
+            # key_information 구성
+            key_information = []
+            
+            # CompanyAnalyzerTool 결과 처리
+            if isinstance(results["valuation"], str) and "predicted_per" in results["valuation"]:
+                key_information.append({
+                    'tool': '기업가치평가 도구',
+                    'referenced_content': f"{company}의 업종 기반 PER/PBR 가치평가 결과",
+                    'source': '네이버 금융 업종 데이터',
+                    'link': f"https://finance.naver.com/sise/sise_group_detail.naver?code={stock_code}",
+                    'analysis_result': results["valuation"]
+                })
+
+            # NowStockPriceTool 결과 처리
+            if results["stock_price"]:
+                key_information.append({
+                    'tool': '현재주가 분석 도구',
+                    'referenced_content': f"{company}의 현재 주가: {results['stock_price']}원",
+                    'source': '네이버 금융 실시간 시세',
+                    'link': f"https://finance.naver.com/item/main.naver?code={stock_code}",
+                    'analysis_result': f"현재 주가: {results['stock_price']}원"
+                })
+
+            # DCFTool 결과 처리
+            if isinstance(results["dcf"], str) and "DCF 기반 주당 가치" in results["dcf"]:
+                key_information.append({
+                    'tool': 'DCF분석 도구',
+                    'referenced_content': f"{company}의 DCF 기반 주당 가치평가",
+                    'source': [
+                        'Yahoo Finance 재무제표 데이터',
+                        '한국은행 기준금리',
+                        'KOSPI 지수 데이터'
+                    ],
+                    'link': f"https://finance.yahoo.com/quote/{stock_code}.KS/financials",
+                    'analysis_result': results["dcf"]
+                })
+
+            return {
+                'output': results,
+                'key_information': key_information
+            }
         except Exception as e:
-            e
+            return {'output': f"Unexpected error occurred: {e}"}
+
         raise RuntimeError(f"CombinedAnalysisTool execution failed: {e}")

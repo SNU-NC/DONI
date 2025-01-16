@@ -20,6 +20,9 @@ from langgraph.prebuilt import ToolNode
 from langgraph.graph import StateGraph, MessagesState, START, END
 from langchain_core.messages import AIMessage, ToolMessage
 import json
+from tools.retrieve.financialReport.korean_nlp import KoreanTextAnalyzer
+
+korean_nlp = KoreanTextAnalyzer()
 
 class CombinedInputSchema(BaseModel):
     query: str = Field(..., description="검색 문장")
@@ -124,7 +127,7 @@ class CombinedFinancialReportSearchTool(BaseTool):
                     except:
                         pass
             return {
-                "output": final_message.content,
+                "output": korean_nlp.normalize_text(final_message.content),
                 "key_information": key_information
             }
             

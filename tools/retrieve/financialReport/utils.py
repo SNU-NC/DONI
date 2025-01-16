@@ -261,6 +261,48 @@ def preprocess_financial_df(df):
         'account_detail', 'thstrm_add_amount',
     ]
     
+    # 연도별 데이터 정리
+    df['bsns_year'] = pd.to_numeric(df['bsns_year'], errors='coerce')
+    latest_year = df['bsns_year'].max()
+    # 전기, 전전기 금액을 숫자로 변환
+    df['frmtrm_amount'] = pd.to_numeric(df['frmtrm_amount'], errors='coerce')
+    df['bfefrmtrm_amount'] = pd.to_numeric(df['bfefrmtrm_amount'], errors='coerce')
+    df['thstrm_amount'] = pd.to_numeric(df['thstrm_amount'], errors='coerce')
+
+    # 연도별로 순회하면서 데이터 정정
+    years = sorted(df['bsns_year'].unique(), reverse=True)
+    
+    for i in range(len(years)):
+        current_year = years[i]
+        current_year_data = df[df['bsns_year'] == current_year]
+        
+        # 다음 연도 데이터가 있는 경우
+        if i < len(years)-1:
+            next_year = years[i+1]
+            next_year_data = df[df['bsns_year'] == next_year]
+            
+            # 현재 연도의 전기 금액과 다음 연도의 당기 금액 비교
+            for _, row in current_year_data.iterrows():
+                account = row['account_nm']
+                prev_amount = row['frmtrm_amount']
+                
+                next_year_row = next_year_data[next_year_data['account_nm'] == account]
+                if not next_year_row.empty:
+                    current_amount = next_year_row.iloc[0]['thstrm_amount']
+                    if pd.notna(current_amount) and (pd.isna(prev_amount) or prev_amount != current_amount):
+                        df.loc[(df['bsns_year'] == current_year) & (df['account_nm'] == account), 'frmtrm_amount'] = current_amount
+            
+            # 현재 연도의 전전기 금액과 다음 연도의 전기 금액 비교
+            for _, row in current_year_data.iterrows():
+                account = row['account_nm']
+                prev_prev_amount = row['bfefrmtrm_amount']
+                
+                next_year_row = next_year_data[next_year_data['account_nm'] == account]
+                if not next_year_row.empty:
+                    prev_amount = next_year_row.iloc[0]['frmtrm_amount']
+                    if pd.notna(prev_amount) and (pd.isna(prev_prev_amount) or prev_prev_amount != prev_amount):
+                        df.loc[(df['bsns_year'] == current_year) & (df['account_nm'] == account), 'bfefrmtrm_amount'] = prev_amount
+
     df = df.drop(columns=columns_to_drop, errors='ignore')
     
     # 2. 열 이름 한글로 변경

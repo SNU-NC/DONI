@@ -230,30 +230,27 @@ class CompanyAnalyzer:
         if company_row.isna().any(axis=None):  # 데이터프레임에 NaN 값이 하나라도 있는 경우
             return f"'{self.company_name}'의 데이터는 재무제표의 지표들이 주어지지 않아 가치평가를 진행할 수 없습니다."
 
-        self.last_eps_value = company_row['latest_eps'].values
-        if not self.last_eps_value:
-            return "가장 최근 eps값이 없어서 가치평가를 할 수 없습니다."
+        message = ""  # 상태 메시지를 저장할 변수
 
         # PER 기반 주가
-        if self.predicted_per:
+        self.last_eps_value = company_row['latest_eps'].values
+        if self.last_eps_value.size == 0:
+            message += "가장 최근 EPS 값이 없어서 PER 기반 가치평가를 진행할 수 없습니다.\n"
+        elif self.predicted_per:
             try:
                 last_eps = self.last_eps_value[-1]
                 predicted_per = self.predicted_per[0]
                 if predicted_per < 0:
-                    return f"📉 예측 PER 값이 음수(-{abs(predicted_per):.2f})입니다. 따라서 PER 기반 주가를 도출할 수 없습니다."
+                    message += f"📉 예측 PER 값이 음수(-{abs(predicted_per):.2f})입니다. 따라서 PER 기반 주가를 도출할 수 없습니다.\n"
+                elif last_eps < 0:
+                    message += "🚫 가장 최근 분기의 EPS 값이 음수이므로 PER 기반 기업 가치를 평가할 수 없습니다.\n"
                 else:
-                    if self.last_eps_value<0:
-                        return "🚫가장 최근 분기의 EPS값이 음수이므로 PER기반의 기업의 가치를 평가할 수 없습니다."
-                    
-                    else:
-                        self.predicted_stock_price = last_eps * predicted_per
-                        #print(f"📝 {self.company_name}의 예측 PER: {predicted_per:.2f}")
-                        #print (f"📊 {self.company_name}의 PER 기반 가치평가결과는 {predicted_stock_price:.0f}원입니다.")
-
+                    self.predicted_stock_price = last_eps * predicted_per
+                    message += f"📝 {self.company_name}의 PER 기반 가치평가 결과: {self.predicted_stock_price:.0f}원.\n"
             except (IndexError, TypeError) as e:
-                return f"PER 기반 주가 계산 중 오류 발생: {e}"
+                message += f"PER 기반 주가 계산 중 오류 발생: {e}\n"
         else:
-            return "예측 PER 값이 없습니다. PER 기반 주가 예측을 건너뜁니다."
+            message += "예측 PER 값이 없어 PER 기반 주가 예측을 건너뜁니다.\n"
 
         # PBR 기반 주가
         self.last_bps_value = company_row['BPS'].values
@@ -261,20 +258,18 @@ class CompanyAnalyzer:
             try:
                 predicted_pbr = self.predicted_pbr[0]
                 if predicted_pbr < 0:
-                    return f"📉 예측 PBR 값이 음수(-{abs(predicted_pbr):.2f})입니다. 따라서 PBR 기반 주가를 도출할 수 없습니다."
+                    message += f"📉 예측 PBR 값이 음수(-{abs(predicted_pbr):.2f})입니다. 따라서 PBR 기반 주가를 도출할 수 없습니다.\n"
+                elif self.last_bps_value.size == 0:
+                    message += "🚫 BPS 값이 없어 PBR 기반 주가 예측을 진행할 수 없습니다.\n"
                 else:
-                    if self.last_bps_value:
-                        self.predicted_stock_price_pbr = self.last_bps_value[-1] * predicted_pbr
-                        #print(f"📝 {self.company_name}의 예측 PBR: {predicted_pbr:.2f}")
-                        #print (f"📊 {self.company_name}의 PBR 기반 가치평가결과는 {predicted_stock_price_pbr:.0f}원입니다.")
-                        return self.predicted_stock_price,self.predicted_stock_price_pbr
-                    else:
-                        #print("🚫BPS 값이 없어 PBR 기반 주가 예측을 진행할 수 없습니다.")
-                        return "🚫BPS 값이 없어 PBR 기반 주가 예측을 진행할 수 없습니다."
+                    self.predicted_stock_price_pbr = self.last_bps_value[-1] * predicted_pbr
+                    message += f"📝 {self.company_name}의 PBR 기반 가치평가 결과: {self.predicted_stock_price_pbr:.0f}원.\n"
             except (IndexError, TypeError) as e:
-                return f"PBR 기반 주가 계산 중 오류 발생: {e}"
+                message += f"PBR 기반 주가 계산 중 오류 발생: {e}\n"
         else:
-            return "예측 PBR 값이 없습니다. PBR 기반 주가 예측을 건너뜁니다."
+            message += "예측 PBR 값이 없어 PBR 기반 주가 예측을 건너뜁니다.\n"
+
+        return message.strip()
 
 
 

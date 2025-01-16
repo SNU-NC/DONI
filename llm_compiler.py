@@ -52,7 +52,8 @@ def initialize_chain():
         replan_count: int
         task_results: Annotated[List[TaskResult], add_task_results]
         key_information: List[str]
-
+        report_agent_use: bool
+        output_list: List[str]
     # 그래프 생성 및 설정
     graph_builder = StateGraph(State)
     graph_builder.add_node("plan_and_schedule", planner.create_plan_and_schedule)
@@ -63,7 +64,7 @@ def initialize_chain():
         messages = state["messages"]
         replan_count = state["replan_count"]
 
-        if state.get("report_agent_use", False):
+        if state.get("report_agent_use", True):
             print("report agent를 사용합니다.")
             return END
 

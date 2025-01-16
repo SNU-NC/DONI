@@ -139,7 +139,7 @@ def check_replan_count(state: dict):
     messages = state["messages"]
     replan_count = state["replan_count"]
     output_list = state["output_list"]
-    if replan_count >= 2:
+    if replan_count >= 1:
         print(f"check replan count: {replan_count} forcing final answer")
         return {
             "messages": messages,

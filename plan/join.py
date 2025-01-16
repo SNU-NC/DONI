@@ -135,15 +135,14 @@ def check_replan_count(state: dict):
     messages = state["messages"]
     replan_count = state["replan_count"]
     output_list = state["output_list"]
-    if replan_count >= 2:
-        logging.info(f"Replan count exceeded ({replan_count}), forcing final answer")
+    if replan_count >= 1:
+        print("replan_count 이거 때문에 죽음   : ", replan_count)
         return {
             "messages": messages,
             "replan_count": replan_count,
             "force_final_answer": True
         }
-    logging.info(f"Current replan count: {replan_count}, continuing normal path")
-
+    print(f"리플랜 횟수 트래킹 : {replan_count}")
     return {
         "messages": [SystemMessage(content=str(msg)) for msg in output_list],
         "replan_count": replan_count,

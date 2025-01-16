@@ -51,6 +51,9 @@ def initialize_chain():
         messages: Annotated[list, add_messages]
         replan_count: int
         task_results: Annotated[List[TaskResult], add_task_results]
+        key_information: List[str]
+        report_agent_use: bool
+        output_list: List[str]
 
     # 그래프 생성 및 설정
     graph_builder = StateGraph(State)
@@ -67,7 +70,7 @@ def initialize_chain():
             return END
 
         if isinstance(messages[-1], AIMessage):
-            if replan_count >= 2:
+            if replan_count >= 1:
                 print("replan_count 제한에 도달: ", replan_count)
             return END
         return "plan_and_schedule"

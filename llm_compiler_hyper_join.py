@@ -20,7 +20,7 @@ from tools.analyze.stockprice.CombinedAnalysisTool import CombinedAnalysisTool
 from langgraph.graph.message import add_messages
 
 from plan.planner_KB import Planner
-from plan.join_hyper import create_joiner  # HyperCLOVA 버전의 joiner 사용
+from plan.join_hyper_hcx import create_joiner  # HyperCLOVA 버전의 joiner 사용
 from plan.reference import TaskResult, add_task_results
 
 def initialize_chain():

@@ -28,7 +28,6 @@ def initialize_chain():
     llm_4o = ChatOpenAI(model="gpt-4-0125-preview", api_key=os.getenv("OPENAI_API_KEY"))
     llm_mini = ChatOpenAI(model="gpt-4o-mini", api_key=os.getenv("OPENAI_API_KEY"))
     clovaX = ChatClovaX(model="HCX-003", clovastudio_api_key=os.getenv("CLOVA_API_KEY"), temperature=0.1)
-
     # 도구 초기화
     tools = [
         WebSearchTools(llm_mini),

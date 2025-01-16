@@ -7,6 +7,8 @@ from langchain_core.documents import Document
 from langchain_core.output_parsers import StrOutputParser
 from langchain.prompts import ChatPromptTemplate, PromptTemplate
 from langchain_openai import ChatOpenAI
+from typing import Dict, Optional
+from tools.retrieve.analystReport.download_pdf import download_pdf, extract_text_from_pdf
 
 class WebScrapeRetriever:
     def __init__(self):
@@ -24,8 +26,24 @@ class WebScrapeRetriever:
         """Load KOSPI mapping data"""
         with open('tools/retrieve/data/kospi_mapping.json', 'r', encoding='utf-8') as f:
             return json.load(f)
+        
+    # WebScrapeRetriever 클래스에 추가할 메서드
+    async def _process_pdf_content(self, download_url: str) -> str:
+        """PDF 다운로드 및 텍스트 추출 처리"""
+        if not download_url or not download_url.endswith('.pdf'):
+            return ""
+        
+        # PDF 다운로드
+        pdf_content = await download_pdf(download_url)
+        if not pdf_content:
+            return ""
+        
+        # PDF에서 텍스트 추출
+        text_content = extract_text_from_pdf(pdf_content)
+        
+        return text_content
 
-    async def _scrape_report_detail(self, detail_url: str, query: str, basic_metadata: dict) -> Dict:
+    async def _scrape_report_detail(self, detail_url: str, download_url: str, query: str, basic_metadata: dict) -> Dict:
         """Scrape detailed report information"""
         try:
             loader = AsyncChromiumLoader([detail_url])
@@ -51,15 +69,28 @@ class WebScrapeRetriever:
                     opinion = opinion_elem.text.strip()
             
             # 본문 미리보기 추출
-            content = ""
-            view_cnt = soup.find('td', class_='view_cnt')
-            if view_cnt:
-                paragraphs = view_cnt.find_all(['p'])
-                content = '\n'.join([p.text.strip() for p in paragraphs if p.text.strip()])
+            # content = ""
+            # view_cnt = soup.find('td', class_='view_cnt')
+            # if view_cnt:
+            #     paragraphs = view_cnt.find_all(['p'])
+            #     content = '\n'.join([p.text.strip() for p in paragraphs if p.text.strip()])
+            
+            # # 메타데이터 구성
+            # metadata = {
+            #     **basic_metadata,  # 기본 메타데이터 (종목명, 제목, 증권사 등)
+            #     'url': detail_url,
+            #     'target_price': target_price,
+            #     'investment_opinion': opinion
+            # }
+            # PDF 콘텐츠 추출
+            pdf_content = await self._process_pdf_content(download_url)
+            
+            # HTML 미리보기와 PDF 콘텐츠 결합
+            content = pdf_content if pdf_content else ""
             
             # 메타데이터 구성
             metadata = {
-                **basic_metadata,  # 기본 메타데이터 (종목명, 제목, 증권사 등)
+                **basic_metadata,
                 'url': detail_url,
                 'target_price': target_price,
                 'investment_opinion': opinion
@@ -175,7 +206,7 @@ class WebScrapeRetriever:
                             }
                             
                             # 상세 페이지 스크래핑 - query와 기본 메타데이터 전달
-                            detail_info = await self._scrape_report_detail(detail_url, query, basic_metadata)
+                            detail_info = await self._scrape_report_detail(detail_url, download_url, query, basic_metadata)
                             
                             research_item = {
                                 '종목명': basic_metadata['company'],

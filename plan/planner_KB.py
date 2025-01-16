@@ -249,12 +249,11 @@ class Planner:
                     if quick_retriever_result and quick_retriever_result.get("output"):
                         print("quick_retriever_tool에서 유용한 정보를 찾았습니다.")
                         # 유효한 결과가 있는 경우
-                        result_content = quick_retriever_result["output"]
                         key_info = quick_retriever_result["key_information"][0]
                         
                         # FunctionMessage로 변환
                         retriever_message = FunctionMessage(
-                            content=result_content,
+                            content=str(quick_retriever_result),
                             name="quick_retriever_tool",
                             additional_kwargs={
                                 "tool_name": key_info["Tool"],
@@ -265,7 +264,7 @@ class Planner:
                                 "idx": 0 # 첫번째 테스크로 처리
                             }
                         )
-                        
+
                         # messages에 추가
                         messages.append(retriever_message)
 

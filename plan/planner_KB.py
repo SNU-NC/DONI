@@ -14,6 +14,7 @@ from plan.scheduler import schedule_tasks
 from tools.analyze.report_agent.report_agent_Tool import ReportAgentTool
 from tools.financialTerm.fin_knowledge_tools import get_fin_tool
 from tools.extractor.query_processor_tool import get_query_processor_tool
+from tools.extractor.quick_retriever_tool import QuickRetrieverTool
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 from langchain_core.runnables import RunnableBranch
@@ -37,6 +38,7 @@ class Planner:
         self.fin_tool = get_fin_tool(self.llm_mini)
         self.query_processor_tool = get_query_processor_tool(self.llm, self.llm_clova)
         self.report_agent_tool = ReportAgentTool()
+        self.quick_retriever_tool = QuickRetrieverTool(self.llm)
         self.plan_store = PlanStore(OpenAIEmbeddings(
                 model="text-embedding-3-small",  # 또는 "text-embedding-3-large"
                 dimensions=1536  # 차원 수 지정 가능
@@ -238,8 +240,48 @@ class Planner:
                     input_query = self.fin_tool.invoke({"query": original_query})
                     process_result = self.query_processor_tool.invoke({"query": input_query})
                     print("process_result:", process_result)
-                    input_query = process_result["input_query"]
-                    metadata = process_result["metadata"]
+
+                    quick_retriever_result = self.quick_retriever_tool.invoke(process_result)
+                    print("quick_retriever_result:", quick_retriever_result)
+            
+                    # quick_retriever_result에서 유효한 정보를 얻었다면, 
+                    # return 할때 quick_retriever_tool 을 message로 감싼 다음에 state에 message로 넘겨주기
+                    if quick_retriever_result and quick_retriever_result.get("output"):
+                        print("quick_retriever_tool에서 유용한 정보를 찾았습니다.")
+                        # 유효한 결과가 있는 경우
+                        result_content = quick_retriever_result["output"]
+                        key_info = quick_retriever_result["key_information"][0]
+                        
+                        # FunctionMessage로 변환
+                        retriever_message = FunctionMessage(
+                            content=result_content,
+                            name="quick_retriever_tool",
+                            additional_kwargs={
+                                "tool_name": key_info["Tool"],
+                                "company": key_info["company"],
+                                "financial_term": key_info["financial_term"],
+                                "year": key_info["year"],
+                                "source": key_info["link"],
+                                "idx": 0 # 첫번째 테스크로 처리
+                            }
+                        )
+                        
+                        # messages에 추가
+                        messages.append(retriever_message)
+
+                        # quick_retriever_tool 결과를 포함하여 state 반환
+                        return {
+                            "messages": messages,
+                            "replan_count": 0,  # 새로운 계획 시작
+                            "task_results": []  # 새로운 태스크 결과 시작
+                        }
+                    
+                    else:
+                        input_query = quick_retriever_result.get("input_query")
+                        print("input_query:", input_query)
+                        metadata = quick_retriever_result.get("metadata")
+                        print("metadata:", metadata)
+
                 messages[0].content = input_query
                 logging.info(f"원본 쿼리: {original_query}")
                 logging.info(f"FinTool 사용 후의 쿼리: {input_query}")

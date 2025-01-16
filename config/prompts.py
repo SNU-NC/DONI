@@ -64,6 +64,11 @@ _query_processor_tool_DESCRIPTION = """
     - 쿼리에서 회사명, 연도 등의 정보를 추출하여, 원본 쿼리에 태그를 달아 변환합니다.
 """
 
+_quick_retriever_tool_DESCRIPTION = """
+    quick_retriever_tool(query: str) -> str:
+    - 쿼리에서 회사명, 연도, 금융용어 여부를 추출하여, 웹스크래핑을 통해 데이터를 추출합니다.
+"""
+
 _math_tool_DESCRIPTION = """
     calculator_graph_tool(query: str, context: Optional[list] = None) -> str:
     이 도구는 복잡한 계산과 금융 데이터 조회를 수행할 수 있습니다.

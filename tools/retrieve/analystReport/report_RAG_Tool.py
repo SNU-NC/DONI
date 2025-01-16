@@ -8,10 +8,6 @@ from langchain_core.tools import ToolException
 from langchain_core.callbacks import CallbackManagerForToolRun, AsyncCallbackManagerForToolRun
 from tools.retrieve.analystReport.retrievers_02 import WebScrapeRetriever
 from config.prompts import _Analyst_RAG_DESCRIPTION
-from langchain_openai import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-from langchain.schema import Document
 
 # 중첩된 이벤트 루프 허용
 nest_asyncio.apply()
@@ -45,13 +41,8 @@ class ReportRAGTool(BaseTool):
             "2. 유사한 의미의 다른 애널리스트 보고서 관련 검색어 사용"
         )
 
-    def _run(
-        self,
-        query: str,
-        company: str,
-        year: int,
-        run_manager: Optional[CallbackManagerForToolRun] = None
-    ) -> Dict:
+    def _run(self, query: str, company: str, year: int, 
+             run_manager: Optional[CallbackManagerForToolRun] = None) -> Dict:
         """동기 실행"""
         try:
             if company is None:
@@ -85,13 +76,8 @@ class ReportRAGTool(BaseTool):
                 "key_information": []
             }
     
-    async def _arun(
-        self,
-        query: str,
-        company: str,
-        year: int,
-        run_manager: Optional[AsyncCallbackManagerForToolRun] = None
-    ) -> Dict:
+    async def _arun(self, query: str, company: str, year: int,
+                    run_manager: Optional[AsyncCallbackManagerForToolRun] = None) -> Dict:
         """비동기 실행"""
         try:
             if company is None:

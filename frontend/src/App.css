@@ -134,11 +134,11 @@
 .input-container {
     position: fixed;
     bottom: 20px;
-    left: 50%;
+    left: 50vw;
     transform: translateX(-50%);
     display: flex;
     gap: 8px;
-    width: 90%;
+    width: 90vw;
     max-width: 600px;
     padding: 12px 16px;
     background: white;
@@ -266,8 +266,9 @@ button:disabled {
     margin-top: 0;
     padding: 20px;
     overflow-y: auto;
-    border-radius: 24px 24px 0 0;
+    border-radius: 24px 24px 24px 24px;
     position: relative;
+    height: 90%;
 }
 
 .messages-wrapper {

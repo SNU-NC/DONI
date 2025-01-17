@@ -252,18 +252,19 @@ class Planner:
                         key_info = quick_retriever_result["key_information"][0]
                         
                         # FunctionMessage로 변환
-                        retriever_message = FunctionMessage(
+                        retriever_message = SystemMessage(
                             content=str(quick_retriever_result),
                             name="quick_retriever_tool",
                             additional_kwargs={
-                                "tool_name": key_info["Tool"],
+                                "tool": key_info["tool"],
                                 "company": key_info["company"],
                                 "financial_term": key_info["financial_term"],
                                 "year": key_info["year"],
-                                "source": key_info["link"],
+                                "referenced_content": key_info["referenced_content"],
                                 "idx": 0 # 첫번째 테스크로 처리
                             }
                         )
+                        
 
                         # messages에 추가
                         messages.append(retriever_message)
@@ -272,7 +273,7 @@ class Planner:
                         return {
                             "messages": messages,
                             "replan_count": 0,  # 새로운 계획 시작
-                            "task_results": []  # 새로운 태스크 결과 시작
+                            "key_information": [key_info]  # 새로운 태스크 결과 시작
                         }
                     
                     else:

@@ -377,3 +377,15 @@ button:disabled {
         transform: translateY(0);
     }
 } 
+
+
+.thinking-button {
+    min-width: 200px;  /* 버튼 크기 고정으로 텍스트 변경 시 흔들림 방지 */
+    transition: all 0.3s ease;  /* 부드러운 텍스트 전환 효과 */
+}
+
+.thinking-button:disabled {
+    background: #f0f0f0;
+    color: #666;
+    cursor: default;
+}

@@ -32,17 +32,41 @@ declare global {
     }
 }
 
-const ThinkingMessage = memo(() => (
-    <div className="message-container">
-        <div className="avatar">
-            <img src="/component/imgs/robot_avatar.png" alt="AI 챗봇" />
+const ThinkingMessage = memo(() => {
+    const [thinkingIndex, setThinkingIndex] = useState(0);
+
+    const thinkingMessages = [
+        "💡 주식투자는 장기적 관점이 중요해요",
+        "💡 투자 결정 전 항상 재무제표를 확인하세요",
+        "💡 시장 전체의 흐름을 파악하는 것이 중요해요",
+        "💡 질문 시, 원하는 기업과 주제, 연도를 명확히 하면 더 정확한 답변을 얻을 수 있어요",
+        "💡 현재 코스피 기업에 대해서 정보를 제공하고 있습니다. 업데이트를 기다려주세요 😉",
+        "데이터 수집 중... 📥",
+        "분석 중... 🔍",
+        "답변 생성 중... ✍️",
+        "마무리 중... 🎯",
+ 
+    ];
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setThinkingIndex((prev) => (prev + 1) % thinkingMessages.length);
+        }, 3000); // 2초마다 메시지 변경
+        
+        return () => clearInterval(interval);
+    }, []);
+
+    return (
+        <div className="message-container">
+            <div className="avatar">
+                <img src="/component/imgs/robot_avatar.png" alt="AI 챗봇" />
+            </div>
+            <div className="message bot-message thinking">
+                {thinkingMessages[thinkingIndex]}
+            </div>
         </div>
-        <div className="message bot-message thinking">
-            생각 중
-            <span className="dots"></span>
-        </div>
-    </div>
-));
+    );
+});
 
 const MessageItem = memo(({ msg, idx, isNew }: { msg: Message; idx: number; isNew?: boolean }) => {
     const messageRef = useRef<HTMLDivElement>(null);
@@ -265,7 +289,7 @@ const InputComponent = memo(({ onSend, isThinking }: { onSend: (value: string) =
                 disabled={isThinking}
             />
             <button onClick={handleSend} disabled={isThinking}>
-                {isThinking ? '생각 중...' : '전송'}
+                {isThinking ? '전송' : '전송'}
             </button>
         </div>
     );

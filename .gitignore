@@ -14,6 +14,6 @@ chroma_db/
 
 # 기타
 *.ipynb_checkpoints/
-
+_metadata.json
 # 추가 무시 파일
 *.ipynb

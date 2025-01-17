@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback, memo, useEffect } from 'react';
 import HTMLFlipBook from 'react-pageflip';
 import './App.css';
+import { createTypeStream } from 'hangul-typing-animation';
 
 interface Message {
     content: string;
@@ -23,6 +24,14 @@ interface Reference {
     content?: string;
 }
 
+declare global {
+    interface Window {
+        TypeHangul: any;
+        Hangul: any;
+        Typed: any;
+    }
+}
+
 const ThinkingMessage = memo(() => (
     <div className="message-container">
         <div className="avatar">
@@ -35,17 +44,53 @@ const ThinkingMessage = memo(() => (
     </div>
 ));
 
-const MessageItem = memo(({ msg, idx, isNew }: { msg: Message; idx: number; isNew?: boolean }) => (
-    <div className={`message-container ${msg.isUser ? 'user' : ''} ${isNew ? 'new-message' : ''}`}>
-        <div className={`avatar ${msg.isUser ? 'user' : ''}`}>
-            {msg.isUser ? '👤' : <img src="/component/imgs/robot_avatar.png" alt="AI 챗봇" />}
+const MessageItem = memo(({ msg, idx, isNew }: { msg: Message; idx: number; isNew?: boolean }) => {
+    const messageRef = useRef<HTMLDivElement>(null);
+    const typeStreamRef = useRef<any>(null);
+
+    useEffect(() => {
+        if (!msg.isUser && isNew && messageRef.current) {
+            const typeStream = createTypeStream({
+                perChar: 20,    // 일반 문자 타이핑 속도
+                perHangul: 0,  // 한글 타이핑 속도
+                perSpace: 0,    // 공백 타이핑 속도
+                perLine: 0,     // 줄바꿈 타이핑 속도
+                perDot: 0     // 마침표 타이핑 속도
+            });
+
+            const timer = setTimeout(() => {
+                if (messageRef.current) {
+                    typeStreamRef.current = typeStream(msg.content, (typing) => {
+                        if (messageRef.current) {
+                            messageRef.current.textContent = typing;
+                        }
+                    });
+                }
+            }, 500);
+
+            return () => {
+                clearTimeout(timer);
+            };
+        } else if (messageRef.current) {
+            messageRef.current.textContent = msg.content;
+        }
+    }, [msg.isUser, isNew, msg.content]);
+
+    return (
+        <div className={`message-container ${msg.isUser ? 'user' : ''} ${isNew ? 'new-message' : ''}`}>
+            <div className={`avatar ${msg.isUser ? 'user' : ''}`}>
+                {msg.isUser ? '👤' : <img src="/component/imgs/robot_avatar.png" alt="AI 챗봇" />}
+            </div>
+            <div 
+                ref={!msg.isUser ? messageRef : null}
+                className={`message ${msg.isUser ? 'user-message' : 'bot-message'}`}
+            >
+                {msg.isUser ? msg.content : ''}
+            </div>
+            <div className="timestamp">{msg.timestamp}</div>
         </div>
-        <div className={`message ${msg.isUser ? 'user-message' : 'bot-message'}`}>
-            {msg.content}
-        </div>
-        <div className="timestamp">{msg.timestamp}</div>
-    </div>
-));
+    );
+});
 
 const ChatMessages = memo(({ messages, isThinking }: { messages: Message[]; isThinking: boolean }) => {
     const messagesEndRef = useRef<HTMLDivElement>(null);

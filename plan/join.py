@@ -207,21 +207,23 @@ def create_joiner(llm: BaseChatModel):
     def conditional_joiner(state: Dict[str, Any]) -> Dict[str, Any]:
         print(f"conditional_joiner's replan_count 확인: {state['replan_count']}")
         report_agent_use = state.get("report_agent_use", False)
-        
+
         # task_results에서 key_information 수집 및 중복 제거
         all_key_information = []
         seen = set()  # 중복 체크를 위한 set
-        
-        for task in state.get("task_results", []):
-            if isinstance(task, dict) and "result" in task:
-                result = task["result"]
-                if isinstance(result, dict) and "key_information" in result:
-                    for info in result["key_information"]:
-                        # tool, filename, referenced_content를 기준으로 중복 체크
-                        key = (info.get('tool'), info.get('filename'), info.get('referenced_content'))
-                        if key not in seen:
-                            seen.add(key)
-                            all_key_information.append(info)
+        if state.get("key_information"):
+            all_key_information = state.get("key_information")
+        else : 
+            for task in state.get("task_results", []):
+                if isinstance(task, dict) and "result" in task:
+                    result = task["result"]
+                    if isinstance(result, dict) and "key_information" in result:
+                        for info in result["key_information"]:
+                            # tool, filename, referenced_content를 기준으로 중복 체크
+                            key = (info.get('tool'), info.get('filename'), info.get('referenced_content'))
+                            if key not in seen:
+                                seen.add(key)
+                                all_key_information.append(info)
         
         if report_agent_use:
             return {

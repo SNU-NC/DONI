@@ -99,7 +99,7 @@ class KoreanTextAnalyzer:
         # 실제 초기화 작업
         self.kiwi = Kiwi(model_type="sbg")
         self.kiwi.space_tolerance = 2
-        self.mecab = Mecab(dicpath="/opt/homebrew/lib/mecab/dic/mecab-ko-dic")
+        self.mecab = Mecab()
         self.company_names = set()
         self.company_name_db = CompanyVectorStore()
         

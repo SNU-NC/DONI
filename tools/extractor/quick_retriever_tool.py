@@ -183,11 +183,11 @@ class QuickRetrieverTool(BaseTool):
                     "output": formatted_content,
                     "key_information": [
                         {
-                            "Tool": "웹검색 재무제표 도구",
+                            "tool": "웹검색 재무제표 도구",
                             "company": results['company'],
                             "financial_term": results['financial_term'],
                             "year": results['year'],
-                            "link": results['link']
+                            "referenced_content": results['link']
                         }
                     ]
                 }

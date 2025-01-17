@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "aesthetic-petal-397306",
+  "private_key_id": "b92daec3375ff1ef2e6dadbdcf305e14ec4da123",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDfZNpA3Pw1IB1n\nV5M/zQ0d/ZsPiAW5iq9cl6zsCE7UdzqsF/jtGPPxdLfNPpDRquD3oQAMH6gKeA0T\n1X7e0ZsTvM6HGHqLx3FOLhuR3BA5iuRaWA5hnvh1AEer5zsRGHksFn4kdUs5jq/i\nZpAQgNDbhswHTCoktX5qPhnFuaK3OqNFARj9VkUyzqoT21gbS++39BONSbw69U17\nPJtpNKvTghTUtSbEpBt1787CxROjLqTvzGtflGNmMZ2VJBL6IO9MtynlHpS6S3wV\nERs93RHOIDDZwNnmqJs4BwQamIPBPPDvPUPxqskzrmwNKx7TIcJjG9MY9qgfiza3\n6YbyjmvDAgMBAAECggEAChb0BJn2ii+5JEHAVNFeFkyuBDWQjKDG6teu57o4VUBN\nVhh/FbZazj0HUC3TPKULJCQRbHrBjDd/37V01XuCFZIhgdiJMGcBpxZOCHh4AyFS\nzwHLJH2Zmy84DXuUH2GLl4IskFj73M2lBAS93QD0bfXYoTu/a4kG/KVxZIzN3Jij\nyyyZ5koz9luQgm3agS5eqHDnxyWXiXDEpHRRdZVaMD+CLt6Pvm5w0rPmOMY0V3T4\nAXqQO6+bJipG9QBgdhFqPWTyaoJ2Iwn/K66PDmvcdCSp6LXdYzXHgfttTa+C/7Yb\nNwlAdrb6tDnLEt8w45Wq91/+6LYSFD7qLK4WM3xjgQKBgQD1YTMAl3mVs1ofTFWp\nxq3dOK1gaC+vGVnVyeNYfDpm5x7DLbF99QMdybMfiEHGFqDdM8BMHwdBUIwVLHg5\n3SAWZgyNzI1ahDfBqvqg4xmPKFzrCM00aN9cp8zaV7ZGCHUp02I7df/pJIBDmejj\nWgctB4ibxuMhpNfY99hP+tXi1wKBgQDpEA1Pf8yTxhGzFSfZT7LXygnLW0v7OcwQ\n11HUwBt/8RWd5pqcnfg72BwV6pABpKgeWvXVXwIp41xw8mpWevA3Ge/QugxUBwRQ\nwXZqAqQgZgMYYOKDfuVgfJm0vD2C+moeiMnHcriXIioRNt5GTaO0DoTVs+TtXvBj\nqpiTi4/M9QKBgQCF/dTG7vAyweRlkN56Pga09X0fVuUq/XHj30GpEPUnOe+/btUs\nTb2s53ZLsrEQBU1EXT0VlB/3F4/XBBiGqGwcLw+N4vQRSH/V3pLLhhdv5/+NTJoZ\nk2bdBrhDRoA/D+FCvK44gAAFhKwRvhrBA2lFuoZrYhinR4eib/yL+BIRswKBgHLs\n/HNQZNQV3tJ9Qyow19L7CPtjaMNYi91eIDcWCDl965fyiBlk+GyiM69G/H4i8NgP\nKJxv/kQjnoj/sRo2A1BYlN5LcBrbXvBnhfnelYp4Y1xZIjmPkJKUvsLV9EsrKrsl\n3sJgOtAkA7R7Zv4p+OioJC6xR9kZcNbk39oZ/u4lAoGAMgrMGLzVc/G2M+hlxtfu\nFWhoFyjnrYlQdwGBZPC5JZiuXYg6X0d0HgmZKrV4geDoXfaWaVQptlcovC9yezY/\nTf813whZfdRYJAMcknSKhnZf6j6sbD5j1Ctw8Rf608BQvOeHCvWMBPmCkbDa01Zn\n9A8bNS7cnstOcxi2ZumnctQ=\n-----END PRIVATE KEY-----\n",
+  "client_email": "studycount@aesthetic-petal-397306.iam.gserviceaccount.com",
+  "client_id": "112662716543907211215",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/studycount%40aesthetic-petal-397306.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

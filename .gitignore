@@ -1,0 +1,19 @@
+# 시스템 파일
+.DS_Store
+**/.DS_Store
+
+# 환경 설정
+.env
+*.pid
+__pycache__/
+*.pyc
+
+# 데이터베이스
+chroma_db/
+**/company_chroma_db/
+
+# 기타
+*.ipynb_checkpoints/
+
+# 추가 무시 파일
+*.ipynb

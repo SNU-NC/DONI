@@ -33,9 +33,26 @@ class QuickRetrieverTool(BaseTool):
     def __init__(self, llm: BaseChatModel):
         super().__init__(llm=llm)
 
+        # self.financial_terms = [
+        #     # 1. 안정성비율
+        #     "유동비율", "부채비율", "이자보상배율", "자기자본비율", "판관비", "판매비와관리비",
+            
+        #     # 2. 성장성비율, 수익성비율
+        #     "EPS", "영업이익률", "EBITDA", "ROA", "ROE", "ROIC",
+        #     "주당순이익", "총자산이익률", "자기자본이익률", "투자자본이익률",
+            
+        #     # 3. 활동성비율
+        #     "총자산회전율"
+        # ]
+
         self.financial_terms = [
+            # 0. 돈
+            "영업이익", "매출액", "자산총계", "부채총계", "자본총계",
+            "자산", "부채", "자본", "매출",
+
             # 1. 안정성비율
-            "유동비율", "부채비율", "이자보상배율", "자기자본비율", "판관비", "판매비와관리비",
+            "유동비율", "부채비율", "이자보상배율", "자기자본비율", "판매비와관리비", "자산총계"
+            "판관비",
             
             # 2. 성장성비율, 수익성비율
             "EPS", "영업이익률", "EBITDA", "ROA", "ROE", "ROIC",
@@ -81,6 +98,14 @@ class QuickRetrieverTool(BaseTool):
                         financial_terms.add("ROIC")
                     elif term == "판관비":
                         financial_terms.add("판매비와관리비")
+                    elif term == "자산":
+                        financial_terms.add("자산총계")
+                    elif term == "부채":
+                        financial_terms.add("부채총계")
+                    elif term == "자본":
+                        financial_terms.add("자본총계")
+                    elif term == "매출":
+                        financial_terms.add("매출액")
                     else:
                         financial_terms.add(term)
             
@@ -189,11 +214,11 @@ class QuickRetrieverTool(BaseTool):
                 formatted_contents.append(
                     f"{result['company']}의 {result['year']}년 {result['financial_term']}은(는) "
                     f"{result['result']}입니다."
-                    f"(단위 : %, 억원)"
                 ) 
 
             formatted_contents = " ".join(formatted_contents)
-            formatted_contents = formatted_contents + " 이 정보는 FnGuide에서 확인되었습니다."
+            formatted_contents = formatted_contents + "(단위 : '%' 또는 '억원') 이 정보는 FnGuide에서 확인되었습니다."
+            # 여기바꿔보기
             
             key_information = [
                 {

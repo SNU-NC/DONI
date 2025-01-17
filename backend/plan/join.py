@@ -60,11 +60,19 @@ def _parse_joiner_output(decision: JoinOutputs) -> Dict[str, Any]:
 
 def select_recent_messages(state) -> dict:
     """Select the most recent messages up to the last human message."""
+    print(f"select_recent_messages의 state확인: {state}")
     messages = state["messages"]
     replan_count = state["replan_count"]
     print(f"select_recent_messages의 replan_count 확인 {replan_count}")
     task_results = state.get("task_results", [])
-    print(f"select_recnet_message의 mesage확인" , messages)
+    print(f"select_recnet_message의 mesage확인", messages)
+    
+    # quick_retriever_message가 있다면 messages에 추가
+    quick_retriever_message = state.get("quick_retriever_message")
+    if quick_retriever_message:
+        print("quick_retriever_message 존재:", quick_retriever_message)
+        messages.append(quick_retriever_message)
+    
     # output 수집 
     output_list = []
     for message in messages:
@@ -74,7 +82,7 @@ def select_recent_messages(state) -> dict:
         print(f"메세지 타입 확인, isHumanMessage: {isinstance(message, HumanMessage)}")
         print(f"메세지 타입 확인, isFunctionMessage: {isinstance(message, FunctionMessage)}")
         print(f"message.content 타입 확인, isstr: {type(message.content)}")
-        try :
+        try:
             if isinstance(message, HumanMessage):
                 output_list.append(message.content)
             elif message.content == 'join':   #메세지 내용이 join인 경우에는 무시 
@@ -96,32 +104,44 @@ def select_recent_messages(state) -> dict:
                         dict_content = literal_eval(message.content)
                         if isinstance(dict_content['output'], dict):
                             output_list.append(str(dict_content['output']))
-                        else : 
+                        else:
                             output_list.append(dict_content['output'])
                         print(f"message.content: {dict_content}")
                         print(f"dict_content['output']: {dict_content['output']}")
                 else:
                     print(f"FunctionMessage이지만 문자열이 아닌 타입: {type(message.content)}")
-
-
         except Exception as e:
             print(f"예외 발생: {e}, 메시지 타입: {type(message.content)}")
             continue
+
     print("^^^^^^^^^^^^^^^^^^^^ logging for output_list ^^^^^^^^^^^^^^^^^^^^")
     print(f"output_list: {output_list}")       
     print("^^^^^^^^^^^^^^^^^^^^ logging for output_list  END ^^^^^^^^^^^^^^^^^^^^")
+
     # key_information 수집
     all_key_information = []
     
+    # quick_retriever_message의 key_information도 포함
+    if quick_retriever_message:
+        print("quick_retriever_message의 key_information 처리 시작")
+        content = json.loads(quick_retriever_message.content)
+        if "key_information" in content:
+            print(f"quick_retriever key_information: {content['key_information']}")
+            all_key_information.extend(content["key_information"])
+    
+    # 기존의 task_results에서도 key_information 수집
     for result in task_results:
         if isinstance(result, dict):
             if 'result' in result and isinstance(result['result'], dict):
                 if 'key_information' in result['result']:
+                    print(f"task_result key_information: {result['result']['key_information']}")
                     all_key_information.extend(result['result']['key_information'])
+    
     print("^^^^^^^^^^^^^^^^^^^^ logging for messages ^^^^^^^^^^^^^^^^^^^^")
     print(f"messages: {messages}")
     print(f"message_type: {type(messages)}")
     print("^^^^^^^^^^^^^^^^^^^^ logging for messages  END ^^^^^^^^^^^^^^^^^^^^")
+
     selected = []
     for msg in messages[::-1]:
         selected.append(msg)
@@ -129,7 +149,7 @@ def select_recent_messages(state) -> dict:
             break
     
     return {
-        "messages": selected[::-1], 
+        "messages": selected[::-1],
         "replan_count": replan_count,
         "key_information": all_key_information,
         "output_list": output_list

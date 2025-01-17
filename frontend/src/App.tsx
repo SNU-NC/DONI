@@ -51,7 +51,7 @@ const ThinkingMessage = memo(() => {
     useEffect(() => {
         const interval = setInterval(() => {
             setThinkingIndex((prev) => (prev + 1) % thinkingMessages.length);
-        }, 3000); // 2초마다 메시지 변경
+        }, 2000); // 2초마다 메시지 변경
         
         return () => clearInterval(interval);
     }, []);
@@ -124,6 +124,7 @@ const ChatMessages = memo(({ messages, isThinking }: { messages: Message[]; isTh
     const lastMessageRef = useRef<HTMLDivElement>(null);
     
     // 스크롤 위치 감지
+    // useCallback 사용 이유: 함수 재생성 방지 인자로 전달한 함수 자체를 메모라이제이션 
     const handleScroll = useCallback(() => {
         if (!chatContainerRef.current) return;
         
@@ -147,8 +148,8 @@ const ChatMessages = memo(({ messages, isThinking }: { messages: Message[]; isTh
                 chatContainerRef.current.scrollTop = 0;
             }
             setIsInitialLoad(false);
-        } else if (shouldAutoScroll && lastMessageRef.current) {
-            lastMessageRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        } else if (shouldAutoScroll && messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
         }
     }, [messages, isInitialLoad, shouldAutoScroll]);
 

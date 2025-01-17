@@ -35,7 +35,7 @@ class QuickRetrieverTool(BaseTool):
 
         self.financial_terms = [
             # 1. 안정성비율
-            "유동비율", "부채비율", "이자보상배율", "자기자본비율",
+            "유동비율", "부채비율", "이자보상배율", "자기자본비율", "판관비", "판매비와관리비",
             
             # 2. 성장성비율, 수익성비율
             "EPS", "영업이익률", "EBITDA", "ROA", "ROE", "ROIC",
@@ -44,6 +44,7 @@ class QuickRetrieverTool(BaseTool):
             # 3. 활동성비율
             "총자산회전율"
         ]
+        # ROA, ROE, ROIC 같은거는 사람마다 계산이 달라질 수 있으므로, 사업보고서의 정보가 필요하다.
         
         
         self.output_parser = None
@@ -78,6 +79,8 @@ class QuickRetrieverTool(BaseTool):
                         financial_terms.add("ROE")
                     elif term == "투자자본이익률":
                         financial_terms.add("ROIC")
+                    elif term == "판관비":
+                        financial_terms.add("판매비와관리비")
                     else:
                         financial_terms.add(term)
             
@@ -186,6 +189,7 @@ class QuickRetrieverTool(BaseTool):
                 formatted_contents.append(
                     f"{result['company']}의 {result['year']}년 {result['financial_term']}은(는) "
                     f"{result['result']}입니다."
+                    f"(단위 : %, 억원)"
                 ) 
 
             formatted_contents = " ".join(formatted_contents)

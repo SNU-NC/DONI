@@ -127,7 +127,7 @@ class CombinedFinancialReportSearchTool(BaseTool):
                     except:
                         pass
             return {
-                "output": korean_nlp.normalize_text(final_message.content),
+                "output": final_message.content,
                 "key_information": key_information
             }
             

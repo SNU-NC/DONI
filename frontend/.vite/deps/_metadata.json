@@ -1,0 +1,29 @@
+{
+  "hash": "1cf5c54e",
+  "browserHash": "ef65f65d",
+  "optimized": {
+    "react": {
+      "src": "../../node_modules/react/index.js",
+      "file": "react.js",
+      "fileHash": "c65cf1b0",
+      "needsInterop": true
+    },
+    "react-dom/client": {
+      "src": "../../node_modules/react-dom/client.js",
+      "file": "react-dom_client.js",
+      "fileHash": "04183801",
+      "needsInterop": true
+    },
+    "react-pageflip": {
+      "src": "../../node_modules/react-pageflip/build/index.es.js",
+      "file": "react-pageflip.js",
+      "fileHash": "66d28056",
+      "needsInterop": false
+    }
+  },
+  "chunks": {
+    "chunk-Q34MU4L5": {
+      "file": "chunk-Q34MU4L5.js"
+    }
+  }
+}

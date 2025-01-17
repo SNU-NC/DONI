@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, memo, useEffect } from 'react';
 import HTMLFlipBook from 'react-pageflip';
 import './App.css';
 
@@ -23,7 +23,7 @@ interface Reference {
     content?: string;
 }
 
-const ThinkingMessage = () => (
+const ThinkingMessage = memo(() => (
     <div className="message-container">
         <div className="avatar">
             <img src="/component/imgs/robot_avatar.png" alt="AI 챗봇" />
@@ -33,31 +33,88 @@ const ThinkingMessage = () => (
             <span className="dots"></span>
         </div>
     </div>
-);
+));
 
-const ChatPage = React.forwardRef<HTMLDivElement, { messages: Message[]; isThinking: boolean }>((props, ref) => {
+const MessageItem = memo(({ msg, idx, isNew }: { msg: Message; idx: number; isNew?: boolean }) => (
+    <div className={`message-container ${msg.isUser ? 'user' : ''} ${isNew ? 'new-message' : ''}`}>
+        <div className={`avatar ${msg.isUser ? 'user' : ''}`}>
+            {msg.isUser ? '👤' : <img src="/component/imgs/robot_avatar.png" alt="AI 챗봇" />}
+        </div>
+        <div className={`message ${msg.isUser ? 'user-message' : 'bot-message'}`}>
+            {msg.content}
+        </div>
+        <div className="timestamp">{msg.timestamp}</div>
+    </div>
+));
+
+const ChatMessages = memo(({ messages, isThinking }: { messages: Message[]; isThinking: boolean }) => {
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const chatContainerRef = useRef<HTMLDivElement>(null);
+    const [isInitialLoad, setIsInitialLoad] = useState(true);
+    const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+    const lastMessageRef = useRef<HTMLDivElement>(null);
+    
+    // 스크롤 위치 감지
+    const handleScroll = useCallback(() => {
+        if (!chatContainerRef.current) return;
+        
+        const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+        const isNearBottom = scrollHeight - (scrollTop + clientHeight) < 100;
+        setShouldAutoScroll(isNearBottom);
+    }, []);
+
+    useEffect(() => {
+        const container = chatContainerRef.current;
+        if (container) {
+            container.addEventListener('scroll', handleScroll);
+            return () => container.removeEventListener('scroll', handleScroll);
+        }
+    }, [handleScroll]);
+
+    // 새 메시지가 추가될 때 스크롤
+    useEffect(() => {
+        if (isInitialLoad) {
+            if (chatContainerRef.current) {
+                chatContainerRef.current.scrollTop = 0;
+            }
+            setIsInitialLoad(false);
+        } else if (shouldAutoScroll && lastMessageRef.current) {
+            lastMessageRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }
+    }, [messages, isInitialLoad, shouldAutoScroll]);
+
+    return (
+        <div className="chat-messages" ref={chatContainerRef}>
+            <div className="messages-wrapper">
+                {messages.map((msg, idx) => (
+                    <div 
+                        key={msg.timestamp + '-' + idx}
+                        ref={idx === messages.length - 1 ? lastMessageRef : null}
+                    >
+                        <MessageItem 
+                            msg={msg} 
+                            idx={idx}
+                            isNew={idx === messages.length - 1 && !isInitialLoad}
+                        />
+                    </div>
+                ))}
+                {isThinking && <ThinkingMessage />}
+                <div ref={messagesEndRef} style={{ height: '20px' }} />
+            </div>
+        </div>
+    );
+});
+
+const ChatPage = memo(React.forwardRef<HTMLDivElement, { messages: Message[]; isThinking: boolean }>((props, ref) => {
     return (
         <div className="page chat-page" ref={ref}>
             <div className="page-header">
                 <h2>💬 대화</h2>
             </div>
-            <div className="chat-messages">
-                {props.messages.map((msg, idx) => (
-                    <div key={`${msg.timestamp}-${idx}`} className={`message-container ${msg.isUser ? 'user' : ''}`}>
-                        <div className={`avatar ${msg.isUser ? 'user' : ''}`}>
-                            {msg.isUser ? '👤' : <img src="/component/imgs/robot_avatar.png" alt="AI 챗봇" />}
-                        </div>
-                        <div className={`message ${msg.isUser ? 'user-message' : 'bot-message'}`}>
-                            {msg.content}
-                        </div>
-                        <div className="timestamp">{msg.timestamp}</div>
-                    </div>
-                ))}
-                {props.isThinking && <ThinkingMessage />}
-            </div>
+            <ChatMessages messages={props.messages} isThinking={props.isThinking} />
         </div>
     );
-});
+}));
 
 const ReferencePage = React.forwardRef<HTMLDivElement, { references: Reference[] }>((props, ref) => {
     const typeIcons = {
@@ -143,6 +200,32 @@ const ReferencePage = React.forwardRef<HTMLDivElement, { references: Reference[]
     );
 });
 
+const InputComponent = memo(({ onSend, isThinking }: { onSend: (value: string) => void, isThinking: boolean }) => {
+    const [inputValue, setInputValue] = useState('');
+
+    const handleSend = useCallback(() => {
+        if (!inputValue.trim()) return;
+        onSend(inputValue);
+        setInputValue('');
+    }, [inputValue, onSend]);
+
+    return (
+        <div className="input-container">
+            <input
+                type="text"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                placeholder="질문을 입력하세요..."
+                disabled={isThinking}
+            />
+            <button onClick={handleSend} disabled={isThinking}>
+                {isThinking ? '생각 중...' : '전송'}
+            </button>
+        </div>
+    );
+});
+
 function App() {
     const [messages, setMessages] = useState<Message[]>([{
         content: "안녕하세요! 금융 정보 검색 AI 챗봇입니다. 궁금하신 내용을 자유롭게 질문해 주세요.",
@@ -150,24 +233,20 @@ function App() {
         timestamp: new Date().toLocaleTimeString()
     }]);
     const [references, setReferences] = useState<Reference[]>([]);
-    const [inputValue, setInputValue] = useState('');
     const [isThinking, setIsThinking] = useState(false);
     const bookRef = useRef<any>();
 
-    const handleSendMessage = async () => {
-        if (!inputValue.trim()) return;
-
+    const handleSendMessage = useCallback(async (inputValue: string) => {
+        const timestamp = new Date().toLocaleTimeString('ko-KR');
         const newMessage: Message = {
             content: inputValue,
             isUser: true,
-            timestamp: new Date().toLocaleTimeString('ko-KR')
+            timestamp
         };
 
         setMessages(prev => [...prev, newMessage]);
-        setInputValue('');
         setIsThinking(true);
-        setReferences([]);
-
+        
         try {
             const response = await fetch('http://localhost:8000/api/search', {
                 method: 'POST',
@@ -183,28 +262,34 @@ function App() {
             }
 
             const data = await response.json();
-            setIsThinking(false);
-
-            if (data.error) {
-                setMessages(prev => [...prev, {
-                    content: data.message,
-                    isUser: false,
-                    timestamp: new Date().toLocaleTimeString('ko-KR')
-                }]);
-            } else {
-                setMessages(prev => [...prev, {
-                    content: data.answer,
-                    isUser: false,
-                    timestamp: new Date().toLocaleTimeString('ko-KR')
-                }]);
+            
+            const updates = () => {
+                setIsThinking(false);
                 
-                if (data.docs && data.docs.length > 0) {
-                    setReferences(data.docs);
-                    setTimeout(() => {
-                        bookRef.current?.pageFlip().flipNext();
-                    }, 1000);
+                if (data.error) {
+                    setMessages(prev => [...prev, {
+                        content: data.message,
+                        isUser: false,
+                        timestamp: new Date().toLocaleTimeString('ko-KR')
+                    }]);
+                } else {
+                    setMessages(prev => [...prev, {
+                        content: data.answer,
+                        isUser: false,
+                        timestamp: new Date().toLocaleTimeString('ko-KR')
+                    }]);
+                    
+                    if (data.docs && data.docs.length > 0) {
+                        setReferences(data.docs);
+                        setTimeout(() => {
+                            bookRef.current?.pageFlip().flipNext();
+                        }, 1500);
+                    }
                 }
-            }
+            };
+            
+            requestAnimationFrame(updates);
+            
         } catch (error) {
             console.error('API 요청 오류:', error);
             setIsThinking(false);
@@ -214,7 +299,7 @@ function App() {
                 timestamp: new Date().toLocaleTimeString('ko-KR')
             }]);
         }
-    };
+    }, []);
 
     return (
         <div className="app-container">
@@ -248,19 +333,7 @@ function App() {
                 <ReferencePage references={references} />
             </HTMLFlipBook>
             
-            <div className="input-container">
-                <input
-                    type="text"
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                    placeholder="질문을 입력하세요..."
-                    disabled={isThinking}
-                />
-                <button onClick={handleSendMessage} disabled={isThinking}>
-                    {isThinking ? '생각 중...' : '전송'}
-                </button>
-            </div>
+            <InputComponent onSend={handleSendMessage} isThinking={isThinking} />
         </div>
     );
 }

@@ -374,5 +374,5 @@ class RetrievalManager:
         
         # 최종 요약 생성
         results = final_summary_chain.invoke(final_input)
-        results['output'] = prefix_message + self.korean_nlp.normalize_text(results['output'])
+        results['output'] = prefix_message + results['output']
         return results

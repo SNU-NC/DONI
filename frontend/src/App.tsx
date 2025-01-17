@@ -263,33 +263,28 @@ function App() {
 
             const data = await response.json();
             
-            const updates = () => {
-                setIsThinking(false);
+            setIsThinking(false);
+            
+            if (data.error) {
+                setMessages(prev => [...prev, {
+                    content: data.message,
+                    isUser: false,
+                    timestamp: new Date().toLocaleTimeString('ko-KR')
+                }]);
+            } else {
+                setMessages(prev => [...prev, {
+                    content: data.answer,
+                    isUser: false,
+                    timestamp: new Date().toLocaleTimeString('ko-KR')
+                }]);
                 
-                if (data.error) {
-                    setMessages(prev => [...prev, {
-                        content: data.message,
-                        isUser: false,
-                        timestamp: new Date().toLocaleTimeString('ko-KR')
-                    }]);
-                } else {
-                    setMessages(prev => [...prev, {
-                        content: data.answer,
-                        isUser: false,
-                        timestamp: new Date().toLocaleTimeString('ko-KR')
-                    }]);
-                    
-                    if (data.docs && data.docs.length > 0) {
-                        setReferences(data.docs);
-                        setTimeout(() => {
-                            bookRef.current?.pageFlip().flipNext();
-                        }, 1500);
-                    }
+                if (data.docs && data.docs.length > 0) {
+                    setReferences(data.docs);
+                    setTimeout(() => {
+                        bookRef.current?.pageFlip().flipNext();
+                    }, 1000);
                 }
-            };
-            
-            requestAnimationFrame(updates);
-            
+            }
         } catch (error) {
             console.error('API 요청 오류:', error);
             setIsThinking(false);

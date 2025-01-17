@@ -16,7 +16,7 @@ from typing import List, Dict, Any
 import asyncio
 
 # uvloop 비활성화
-asyncio.set_event_loop_policy(asyncio.DefaultEventLoopPolicy())
+#asyncio.set_event_loop_policy(asyncio.DefaultEventLoopPolicy())
 
 # 기존 RAG 관련 임포트 
 from llm_compiler import LLMCompiler
@@ -127,4 +127,4 @@ atexit.register(cleanup)
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app:app", host="127.0.0.1", port=8000, reload=True, loop="asyncio")
+    uvicorn.run("app:app", host="127.0.0.1", port=8000, reload=False, loop="asyncio")

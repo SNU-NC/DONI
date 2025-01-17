@@ -116,7 +116,8 @@ class QuickRetrieverTool(BaseTool):
             result, url = await self.web_scraper.run(company, financial_term, int(year))
             if result is None:
                 return input_data
-                
+            print("result:", result)
+            print("지수투의링크를찾아보자:", url)
             return {
                 "query": input_data['input_query'],
                 "company": input_data['metadata']['companyName'],
@@ -170,7 +171,7 @@ class QuickRetrieverTool(BaseTool):
                 input_query=input_query,
                 metadata=metadata
             )
-            
+            print("self.process_query 결과:", results)
             # 결과 처리 로직
             if results == input_data:
                 return input_data
@@ -178,7 +179,7 @@ class QuickRetrieverTool(BaseTool):
             if "result" in results:
                 formatted_content = (f"{results['company']}의 {results['year']}년 {results['financial_term']}은(는) "
                                     f"{results['result']}입니다."
-                                    f" 이 정보는 {results['link']}에서 확인되었습니다.")
+                                    f" 이 정보는 FnGuide에서 확인되었습니다.")
                 return {
                     "output": formatted_content,
                     "key_information": [
@@ -187,7 +188,7 @@ class QuickRetrieverTool(BaseTool):
                             "company": results['company'],
                             "financial_term": results['financial_term'],
                             "year": results['year'],
-                            "referenced_content": results['link']
+                            "link": results['link']
                         }
                     ]
                 }

@@ -1,3 +1,4 @@
+import json
 import logging
 from typing import Sequence,  Dict, Any
 from langchain_core.language_models import BaseChatModel
@@ -250,25 +251,25 @@ class Planner:
                         print("quick_retriever_tool에서 유용한 정보를 찾았습니다.")
                         # 유효한 결과가 있는 경우
                         key_info = quick_retriever_result["key_information"][0]
-                        
+                        print("key_info:", key_info)
                         # FunctionMessage로 변환
-                        retriever_message = SystemMessage(
-                            content=str(quick_retriever_result),
+                        retriever_message = FunctionMessage(
+                            content= json.dumps(quick_retriever_result),
                             name="quick_retriever_tool",
                             additional_kwargs={
                                 "tool": key_info["tool"],
                                 "company": key_info["company"],
                                 "financial_term": key_info["financial_term"],
                                 "year": key_info["year"],
-                                "referenced_content": key_info["referenced_content"],
-                                "idx": 0 # 첫번째 테스크로 처리
+                                "link": key_info["link"],
+                                "idx": 1 # 첫번째 테스크로 처리
                             }
                         )
                         
-
+                        print("retriever_message:", retriever_message)
                         # messages에 추가
                         messages.append(retriever_message)
-
+                        print("messages:", messages)
                         # quick_retriever_tool 결과를 포함하여 state 반환
                         return {
                             "messages": messages,

@@ -64,7 +64,7 @@ def select_recent_messages(state) -> dict:
     replan_count = state["replan_count"]
     print(f"select_recent_messages의 replan_count 확인 {replan_count}")
     task_results = state.get("task_results", [])
-    
+    print(f"select_recnet_message의 mesage확인" , messages)
     # output 수집 
     output_list = []
     for message in messages:
@@ -73,6 +73,7 @@ def select_recent_messages(state) -> dict:
         print(f"message.content type: {type(message.content)}")
         print(f"메세지 타입 확인, isHumanMessage: {isinstance(message, HumanMessage)}")
         print(f"메세지 타입 확인, isFunctionMessage: {isinstance(message, FunctionMessage)}")
+        print(f"message.content 타입 확인, isstr: {type(message.content)}")
         try :
             if isinstance(message, HumanMessage):
                 output_list.append(message.content)
@@ -82,7 +83,7 @@ def select_recent_messages(state) -> dict:
             elif isinstance(message.content, (float, int)):  # float나 int 타입 체크
                 print(f"숫자 타입 메시지 처리: {message.content}")
                 output_list.append(str(message.content))
-            elif isinstance(message, FunctionMessage):
+            elif isinstance(message, FunctionMessage) or isinstance(message, SystemMessage):
                 print("FunctionMessage에 왔습니다~~~~")
                 if isinstance(message.content, str):
                     # 숫자 형태의 문자열인지 확인
@@ -111,6 +112,7 @@ def select_recent_messages(state) -> dict:
     print("^^^^^^^^^^^^^^^^^^^^ logging for output_list  END ^^^^^^^^^^^^^^^^^^^^")
     # key_information 수집
     all_key_information = []
+    
     for result in task_results:
         if isinstance(result, dict):
             if 'result' in result and isinstance(result['result'], dict):
@@ -207,11 +209,12 @@ def create_joiner(llm: BaseChatModel):
     def conditional_joiner(state: Dict[str, Any]) -> Dict[str, Any]:
         print(f"conditional_joiner's replan_count 확인: {state['replan_count']}")
         report_agent_use = state.get("report_agent_use", False)
-
+        
         # task_results에서 key_information 수집 및 중복 제거
         all_key_information = []
         seen = set()  # 중복 체크를 위한 set
         if state.get("key_information"):
+            print(f"key_information 있음: {state.get('key_information')}")
             all_key_information = state.get("key_information")
         else : 
             for task in state.get("task_results", []):

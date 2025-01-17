@@ -186,6 +186,8 @@ button:disabled {
 .reference-page {
     padding: 20px;
     background: #fff;
+    height: 100%;  /* 높이를 100%로 설정 */
+    overflow: hidden;  /* 스크롤 제거 */
 }
 
 .reference-item {
@@ -201,6 +203,13 @@ button:disabled {
 .reference-item:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* references-container 스타일 추가 */
+.references-container {
+    height: calc(100% - 60px);  /* header 높이를 제외한 나머지 공간 */
+    overflow-y: auto;  /* 세로 스크롤만 적용 */
+    padding: 0 20px;
 }
 
 .reference-title {
@@ -262,11 +271,11 @@ button:disabled {
 .chat-messages {
     flex-grow: 1;
     background: var(--chat-bg);
-    margin : 10px;
+    margin: 10px;
     margin-top: 0;
     padding: 20px;
     overflow-y: auto;
-    border-radius: 24px 24px 24px 24px;
+    border-radius: 24px;
     position: relative;
     height: 90%;
 }
@@ -312,22 +321,22 @@ button:disabled {
     }
 }
 
-/* 스크롤바 스타일 수정 */
+/* chat-messages 스크롤바 스타일 수정 */
 .chat-messages::-webkit-scrollbar {
-    width: 6px;
+    width: 6px;  /* 스크롤바 너비 */
 }
 
 .chat-messages::-webkit-scrollbar-track {
-    background: transparent;
+    background: transparent;  /* 스크롤바 트랙 배경 투명 */
 }
 
 .chat-messages::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.1);
-    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.1);  /* 스크롤바 색상 */
+    border-radius: 3px;  /* 스크롤바 모서리 둥글게 */
 }
 
 .chat-messages::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.2);
+    background: rgba(0, 0, 0, 0.2);  /* 호버 시 더 진한 색상 */
 }
 
 /* 연속된 메시지에 대한 지연 애니메이션 */
@@ -388,4 +397,22 @@ button:disabled {
     background: #f0f0f0;
     color: #666;
     cursor: default;
+}
+
+/* 스크롤바 스타일링 (선택사항) */
+.references-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.references-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.references-container::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+}
+
+.references-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.2);
 }

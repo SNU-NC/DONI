@@ -39,6 +39,7 @@ class QuickRetrieverTool(BaseTool):
             
             # 2. 성장성비율, 수익성비율
             "EPS", "영업이익률", "EBITDA", "ROA", "ROE", "ROIC",
+            "주당순이익", "총자산이익률", "자기자본이익률", "투자자본이익률",
             
             # 3. 활동성비율
             "총자산회전율"
@@ -84,7 +85,16 @@ class QuickRetrieverTool(BaseTool):
             financial_term = None
             for term in self.financial_terms:
                 if term in query:
-                    financial_term = term
+                    if term == "주당순이익":
+                        financial_term = "EPS"
+                    elif term == "총자산이익률":
+                        financial_term = "ROA"
+                    elif term == "자기자본이익률":
+                        financial_term = "ROE"
+                    elif term == "투자자본이익률":
+                        financial_term = "ROIC"
+                    else:
+                        financial_term = term
                     break
             
             if all([company, year, financial_term]):

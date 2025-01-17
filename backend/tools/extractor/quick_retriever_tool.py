@@ -45,25 +45,11 @@ class QuickRetrieverTool(BaseTool):
             "총자산회전율"
         ]
         
-        self.extract_info_prompt = ChatPromptTemplate.from_messages([
-            ("system", """
-            당신은 사용자의 쿼리에서 연도를 추출하는 전문가입니다.
-            
-            다음 규칙을 따라주세요:
-            1. 연도는 숫자 4자리로 추출합니다.
-            2. 출력은 연도만 출력합니다.
-            3. 추가 텍스트나 특수문자를 포함하지 않습니다.
-            
-            입력 쿼리: {query}
-            
-            출력 예시: 2023
-            """)
-        ])
         
         self.output_parser = None
         self.web_scraper = WebScrapeRetriever()
 
-    def _extract_info(self, query: str, metadata: Dict[str, Any]) -> Optional[List[str]]:
+    def _extract_info(self, query: str, metadata: Dict[str, Any]):
         """쿼리에서 회사명, 연도, 금융용어를 추출"""
         try:
             # 1. 회사명 추출 (XML 태그 또는 metadata에서)
@@ -74,31 +60,29 @@ class QuickRetrieverTool(BaseTool):
                 if company_match:
                     company = company_match.group(1)
             
-            # 2. 연도 추출 (LLM)
-            chain = self.extract_info_prompt | self.llm
-            year_message = chain.invoke({
-                "query": query
-            })
-            year = year_message.content.strip()
+            # 2. 최근 5년 연도 추출
+            import time
+            current_year = time.localtime().tm_year - 2
+            years = [current_year - i for i in range(5)]
+            print(f"4-5개년: {years}")
             
             # 3. 금융용어 추출 (문자열 매칭)
-            financial_term = None
+            financial_terms = set()  # 중복 방지를 위해 set 사용
             for term in self.financial_terms:
                 if term in query:
                     if term == "주당순이익":
-                        financial_term = "EPS"
+                        financial_terms.add("EPS")
                     elif term == "총자산이익률":
-                        financial_term = "ROA"
+                        financial_terms.add("ROA")
                     elif term == "자기자본이익률":
-                        financial_term = "ROE"
+                        financial_terms.add("ROE")
                     elif term == "투자자본이익률":
-                        financial_term = "ROIC"
+                        financial_terms.add("ROIC")
                     else:
-                        financial_term = term
-                    break
+                        financial_terms.add(term)
             
-            if all([company, year, financial_term]):
-                return [company, year, financial_term]
+            if all([company, years]) and financial_terms:  # financial_terms가 비어있지 않은지 확인
+                return [company, years, list(financial_terms)]  # set을 list로 변환하여 반환
             return None
             
         except Exception as e:
@@ -113,32 +97,39 @@ class QuickRetrieverTool(BaseTool):
         if not extracted_info or len(extracted_info) < 3:
             return input_data
             
-        company, year, financial_term = extracted_info
-        year = int(year)
-        print(f"추출된 정보: company={company}, year={year}, financial_term={financial_term}")
+        company, years, financial_terms = extracted_info
+        all_results = []  # 루프 밖으로 이동
+
+        for financial_term in financial_terms:
+            # 2. 금융용어가 허용된 리스트에 있는지 확인
+            if financial_term not in self.financial_terms:
+                continue
+    
+            for year in years:
+                year = int(year)
+                print(f"추출된 정보: company={company}, year={year}, financial_term={financial_term}")
+                
+                # 3. WebScrapeRetriever를 통해 데이터 검색
+                try:
+                    result, url = await self.web_scraper.run(company, financial_term, int(year))
+                    if result is None:
+                        continue
+                    print("result:", result)
+
+                    data = {
+                        "query": input_data['input_query'],
+                        "company": input_data['metadata']['companyName'],
+                        "financial_term": financial_term,
+                        "year": year,
+                        "result": result,
+                        "link": url
+                    }
+                    all_results.append(data)
+
+                except Exception as e:
+                    continue
         
-        # 2. 금융용어가 허용된 리스트에 있는지 확인
-        if financial_term not in self.financial_terms:
-            return input_data
-        
-        # 3. WebScrapeRetriever를 통해 데이터 검색
-        try:
-            result, url = await self.web_scraper.run(company, financial_term, int(year))
-            if result is None:
-                return input_data
-            print("result:", result)
-            print("지수투의링크를찾아보자:", url)
-            return {
-                "query": input_data['input_query'],
-                "company": input_data['metadata']['companyName'],
-                "financial_term": financial_term,
-                "year": year,
-                "result": result,
-                "link": url
-            }
-            
-        except Exception as e:
-            return input_data
+        return all_results if all_results else input_data
 
     def _run(self, input_query: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -186,25 +177,36 @@ class QuickRetrieverTool(BaseTool):
             if results == input_data:
                 return input_data
                 
-            if "result" in results:
-                formatted_content = (f"{results['company']}의 {results['year']}년 {results['financial_term']}은(는) "
-                                    f"{results['result']}입니다."
-                                    f" 이 정보는 FnGuide에서 확인되었습니다.")
-                return {
-                    "output": formatted_content,
-                    "key_information": [
-                        {
-                            "tool": "웹검색 재무제표 도구",
-                            "company": results['company'],
-                            "financial_term": results['financial_term'],
-                            "year": results['year'],
-                            "link": results['link']
-                        }
-                    ]
+            # 여러 결과를 하나의 문자열로 결합
+            formatted_contents = []
+            # key_information = []
+            
+            for result in results:
+                
+                formatted_contents.append(
+                    f"{result['company']}의 {result['year']}년 {result['financial_term']}은(는) "
+                    f"{result['result']}입니다."
+                ) 
+
+            formatted_contents = " ".join(formatted_contents)
+            formatted_contents = formatted_contents + " 이 정보는 FnGuide에서 확인되었습니다."
+            
+            key_information = [
+                {
+                    "tool": "웹검색 재무제표 도구",
+                    "company": results[0]['company'],
+                    "referenced_content": "comp.fnguide.com",
+                    "link": results[0]['link']
                 }
-                
-            return input_data
-                
+            ]
+
+            final =  {
+                "output": formatted_contents,
+                "key_information": key_information
+            }
+
+            return final
+
         except ValueError as ve:
             return input_data
         except Exception as e:

@@ -259,8 +259,7 @@ class Planner:
                             additional_kwargs={
                                 "tool": key_info["tool"],
                                 "company": key_info["company"],
-                                "financial_term": key_info["financial_term"],
-                                "year": key_info["year"],
+                                "referenced_content": key_info["referenced_content"],
                                 "link": key_info["link"],
                                 "idx": 1 # 첫번째 테스크로 처리
                             }

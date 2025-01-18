@@ -293,6 +293,7 @@ TABLE_AGENT_PREFIX = """
 
 You are using a pandas data frame in Python. The name of the data frame is 'df'.
 This is the result of 'print(df.head())):
+**무조건 금액 데이터는 그대로 출력, 반올림 하지 마세요**
 """
 
 COMBINED_FINANCIAL_REPORT_PROMPT = PromptTemplate(

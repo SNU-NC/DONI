@@ -227,185 +227,371 @@ class Planner:
             }
 
             return company_name in report_companies
+        
+        # @as_runnable
+        # def plan_and_schedule(state: Dict[str, Any]) -> Dict[str, Any]:
+        #     messages = state["messages"]
+        #     print("Plan*Scheduler 시작할 때의 replan Count를 체크하겠습니다. ", state.get("replan_count", 404))
+        #     try:
+        #         # 1. 원본 쿼리 ( = user query )
+        #         original_query = messages[0].content
 
+        #         # 2. replan_count가 없을 때만 fin_tool, query_processor_tool 실행
+        #         input_query = original_query
+        #         if "replan_count" not in state:
+        #             input_query = self.fin_tool.invoke({"query": original_query})
+        #             process_result = self.query_processor_tool.invoke({"query": input_query})
+        #             print("process_result:", process_result)
+
+        #             # query_analyzer_result로 판단
+        #             query_analyzer_result = query_analyzer(process_result.get("input_query"))
+        #             print("query_analyzer_result:", query_analyzer_result)
+
+        #             # quick_retriever_tool 사용 필요하면
+        #             if query_analyzer_result.get("quick_retriever_tool"):
+        #                 quick_retriever_result = self.quick_retriever_tool.invoke(process_result)
+        #                 print("quick_retriever_result:", quick_retriever_result)
+
+        #                 # plan_and_schedule 사용 필요 없으면, join으로 메시지 보내기
+        #                 if not query_analyzer_result.get("plan_and_schedule"):
+        #                     # quick_retriever_result에서 유효한 정보를 얻었다면, 
+        #                     # return 할때 quick_retriever_tool 을 message로 감싼 다음에 state에 message로 넘겨주기
+        #                     print("quick_retriever_tool만 사용합니다.")
+        #                     # 유효한 결과가 있는 경우
+        #                     key_info = quick_retriever_result["key_information"][0]
+        #                     # print("key_info:", key_info)
+        #                     # FunctionMessage로 변환
+        #                     retriever_message = FunctionMessage(
+        #                         content= json.dumps(quick_retriever_result),
+        #                         name="quick_retriever_tool",
+        #                         additional_kwargs={
+        #                             "tool": key_info["tool"],
+        #                             "company": key_info["company"],
+        #                             "referenced_content": key_info["referenced_content"],
+        #                             "link": key_info["link"],
+        #                             "idx": 1 # 첫번째 테스크로 처리
+        #                         }
+        #                     )
+        #                     print("retriever_message:", retriever_message)
+                            
+        #                     # messages에 retriever_message를 추가해줘야 함
+        #                     messages.append(retriever_message)  # 여기 추가
+
+        #                     return {
+        #                         "messages": messages,  
+        #                         "replan_count": 1,
+        #                         "key_information": [key_info],
+        #                         "quick_retriever_message": retriever_message
+        #                     }
+                            
+                        
+        #                 # plan_and_schedule 사용 필요하면, quick_retriever_result 결과를 messages에 추가
+        #                 else:
+        #                     print("quick_retriever_tool과 plan_and_schedule 둘 다 사용합니다.")
+        #                     key_info = quick_retriever_result["key_information"][0]
+                            
+        #                     # FunctionMessage로 변환
+        #                     retriever_message = FunctionMessage(
+        #                         content= json.dumps(quick_retriever_result),
+        #                         name="quick_retriever_tool",
+        #                         additional_kwargs={
+        #                             "tool": key_info["tool"],
+        #                             "company": key_info["company"],
+        #                             "referenced_content": key_info["referenced_content"],
+        #                             "link": key_info["link"],
+        #                             "idx": 1
+        #                         }
+        #                     )
+        #                     print("retriever_message:", retriever_message)
+
+        #                     messages.append(retriever_message)  # quick_retriever 결과를 messages에 추가
+
+        #                     # planner 실행
+        #                     try:
+        #                         initial_tasks = list(planner.stream(messages))
+        #                         if initial_tasks:
+        #                             logging.info(f"스케줄링할 태스크 수: {len(initial_tasks)}")
+        #                             scheduled_tasks, new_task_results = schedule_tasks.invoke({
+        #                                 "messages": messages,
+        #                                 "tasks": initial_tasks
+        #                             })
+                                    
+        #                             # current_task_results 초기화 및 누적
+        #                             current_task_results = state.get("task_results", [])
+        #                             current_task_results.extend(new_task_results)
+                                    
+        #                             # task_results에서 key_information 수집
+        #                             all_key_information = [key_info]  # quick_retriever의 key_info 먼저 추가
+        #                             for task_result in current_task_results:
+        #                                 if isinstance(task_result, dict) and 'result' in task_result:
+        #                                     result = task_result['result']
+        #                                     if isinstance(result, dict) and 'key_information' in result:
+        #                                         all_key_information.extend(result['key_information'])   
+
+        #                             return {
+        #                                 "messages": scheduled_tasks,
+        #                                 "replan_count": 0,
+        #                                 "key_information": all_key_information,
+        #                                 "task_results": current_task_results,  # task_results 포함
+        #                                 "quick_retriever_message": retriever_message
+        #                             }
+        #                         else:
+        #                             return {
+        #                                 "messages": messages,
+        #                                 "replan_count": 0,
+        #                                 "key_information": [key_info],
+        #                                 "task_results": state.get("task_results", []),  # 기존 task_results 유지
+        #                                 "quick_retriever_message": retriever_message
+        #                             }
+        #                     except Exception as e:
+        #                         logging.error(f"Plan execution error: {e}")
+        #                         return {
+        #                             "messages": messages,
+        #                             "replan_count": 0,
+        #                             "key_information": [key_info],
+        #                             "task_results": state.get("task_results", []),  # 기존 task_results 유지
+        #                             "quick_retriever_message": retriever_message
+        #                         }
+                            
+
+        #             # quick_retriever_tool은 필요하지 않고, plan_and_schedule만 필요하면 (O)
+        #             else:
+        #                 input_query = process_result.get("input_query")
+        #                 print("input_query:", input_query)
+        #                 metadata = process_result.get("metadata")
+        #                 print("metadata:", metadata)
+
+        #         input_query = process_result.get("input_query")
+        #         print("input_query:", input_query)
+        #         metadata = process_result.get("metadata")
+        #         print("metadata:", metadata)
+
+        #         messages[0].content = input_query
+        #         logging.info(f"원본 쿼리: {original_query}")
+        #         logging.info(f"FinTool 사용 후의 쿼리: {input_query}")
+                
+        #         # 리포트 에이전트에서 처리할 수 없는 기업인지 확인 
+        #         is_report_can = is_in_report_agent(metadata["companyName"])
+        #         print("is_report_can:", is_report_can)
+
+        #         # report_agent_use 판단
+        #         if is_valid_query(original_query) and is_report_can:
+        #             logging.info("report_agent_use 판단 시작")
+        #             result_message = self.report_agent_tool.invoke({"query": original_query, "metadata": metadata})
+        #             logging.info("report_agent_tool 사용 후 바로 종료합니다.")
+        #             # 상위 레벨(should_continue)에서 이 값을 확인해 종료 처리
+        #             return {
+        #                 "messages": [result_message],
+        #                 "replan_count": state.get("replan_count", 1),
+        #                 "report_agent_use": True
+        #             }
+
+        #         try:
+
+        #             initial_tasks = list(planner.stream(messages))
+        #             if not initial_tasks:
+        #                 logging.warning("초기 태스크 생성 실패: 빈 태스크 리스트")
+        #                 return {"messages": [], "replan_count": state.get("replan_count", 1)}
+        #         except Exception as e:
+        #             logging.error(f"초기 태스크 생성 중 오류 발생: {e}")
+        #             return {"messages": [], "replan_count": state.get("replan_count", 1)}
+
+        #         # 3. task 스케줄링
+        #         try:
+        #             if initial_tasks:
+        #                 logging.info(f"스케줄링할 태스크 수: {len(initial_tasks)}")
+        #                 scheduled_tasks, new_task_results = schedule_tasks.invoke({
+        #                     "messages": messages,
+        #                     "tasks": initial_tasks
+        #                 })
+        #                 # state의 task_results에 새로운 결과 추가
+        #                 current_task_results = state.get("task_results", [])
+        #                 current_task_results.extend(new_task_results)
+        #             else:
+        #                 logging.warning("스케줄링할 태스크가 없음")
+        #                 scheduled_tasks = []
+        #                 current_task_results = state.get("task_results", [])
+        #         except Exception as e:
+        #             logging.error(f"태스크 스케줄링 중 오류: {e}")
+        #             scheduled_tasks = []
+        #             current_task_results = state.get("task_results", [])
+
+        #         # 4. replan count 관리
+        #         if "replan_count" not in state:
+        #             state["replan_count"] = 0
+        #             print("replan_count 초기화", state["replan_count"])
+        #         else : 
+        #             state["replan_count"] = state["replan_count"] + 1
+        #             print("replan_count 증가", state["replan_count"])
+                
+
+        #         return {
+        #             "messages": scheduled_tasks, 
+        #             "replan_count": state["replan_count"],
+        #             "task_results": current_task_results  # 누적된 task_results 반환
+        #         }
+
+        #     except Exception as e:
+        #         logging.error(f"plan_and_schedule 전체 실행 중 예기치 않은 오류: {e}")
+        #         return {
+        #             "messages": [], 
+        #             "replan_count": state.get("replan_count", 1),
+        #             "task_results": state.get("task_results", [])  # 기존 task_results 유지
+        #         }
         @as_runnable
         def plan_and_schedule(state: Dict[str, Any]) -> Dict[str, Any]:
             messages = state["messages"]
             print("Plan*Scheduler 시작할 때의 replan Count를 체크하겠습니다. ", state.get("replan_count", 404))
+            
             try:
-                # 1. 원본 쿼리 ( = user query )
-                original_query = messages[0].content
-
-                # 2. replan_count가 없을 때만 fin_tool, query_processor_tool 실행
-                input_query = original_query
-                if "replan_count" not in state:
-                    input_query = self.fin_tool.invoke({"query": original_query})
-                    process_result = self.query_processor_tool.invoke({"query": input_query})
-                    print("process_result:", process_result)
-
-                    # query_analyzer_result로 판단
-                    query_analyzer_result = query_analyzer(process_result.get("input_query"))
-                    print("query_analyzer_result:", query_analyzer_result)
-
-                    # quick_retriever_tool 사용 필요하면
-                    if query_analyzer_result.get("quick_retriever_tool"):
-                        quick_retriever_result = self.quick_retriever_tool.invoke(process_result)
-                        print("quick_retriever_result:", quick_retriever_result)
-
-                        # plan_and_schedule 사용 필요 없으면, join으로 메시지 보내기
-                        if quick_retriever_result.get("plan_and_schedule")==False:
-                            # quick_retriever_result에서 유효한 정보를 얻었다면, 
-                            # return 할때 quick_retriever_tool 을 message로 감싼 다음에 state에 message로 넘겨주기
-                            print("quick_retriever_tool만 사용합니다.")
-                            # 유효한 결과가 있는 경우
-                            key_info = quick_retriever_result["key_information"][0]
-                            # print("key_info:", key_info)
-                            # FunctionMessage로 변환
-                            retriever_message = FunctionMessage(
-                                content= json.dumps(quick_retriever_result),
-                                name="quick_retriever_tool",
-                                additional_kwargs={
-                                    "tool": key_info["tool"],
-                                    "company": key_info["company"],
-                                    "referenced_content": key_info["referenced_content"],
-                                    "link": key_info["link"],
-                                    "idx": 1 # 첫번째 테스크로 처리
-                                }
-                            )
-                            print("retriever_message:", retriever_message)
-                            
-                            # messages에 retriever_message를 추가해줘야 함
-                            messages.append(retriever_message)  # 여기 추가
-
-                            return {
-                                "messages": messages,  
-                                "replan_count": 1,
-                                "key_information": [key_info],
-                                "quick_retriever_message": retriever_message
-                            }
-                            
-                        
-                        # plan_and_schedule 사용 필요하면, quick_retriever_result 결과를 messages에 추가
-                        else:
-                            print("quick_retriever_tool과 plan_and_schedule 둘 다 사용합니다.")
-                            # 유효한 결과가 있는 경우
-                            key_info = quick_retriever_result["key_information"][0]
-                            
-                            # FunctionMessage로 변환
-                            retriever_message = FunctionMessage(
-                                content= json.dumps(quick_retriever_result),
-                                name="quick_retriever_tool",
-                                additional_kwargs={
-                                    "tool": key_info["tool"],
-                                    "company": key_info["company"],
-                                    "referenced_content": key_info["referenced_content"],
-                                    "link": key_info["link"],
-                                    "idx": 1 # 첫번째 테스크로 처리
-                                }
-                            )
-                            print("retriever_message:", retriever_message)
-
-                            messages.append(retriever_message)  # 여기 추가
-
-                            input_query = process_result.get("input_query")
-                            print("input_query:", input_query)
-                            metadata = process_result.get("metadata")
-                            print("metadata:", metadata)
-
-                            # 원본 쿼리를 수정된 쿼리로 업데이트
-                            messages[0].content = input_query
-                            
-                            return {
+                # replan 시나리오 처리
+                if "replan_count" in state:
+                    state["replan_count"] += 1
+                    
+                    # 기존의 task_results와 key_information 유지
+                    current_task_results = state.get("task_results", [])
+                    current_key_information = state.get("key_information", [])
+                    
+                    # quick_retriever_message 처리
+                    quick_retriever_message = state.get("quick_retriever_message")
+                    if quick_retriever_message and quick_retriever_message not in messages:
+                        messages.insert(1, quick_retriever_message)
+                    
+                    try:
+                        initial_tasks = list(planner.stream(messages))
+                        if initial_tasks:
+                            scheduled_tasks, new_task_results = schedule_tasks.invoke({
                                 "messages": messages,
-                                "replan_count": 0,  # 계획 실행
-                                "key_information": [key_info],  # 새로운 태스크 결과 시작
-                                "quick_retriever_message": retriever_message  # 나중에 최종 결과에 포함시키기 위해 별도로 저장
-                            }
+                                "tasks": initial_tasks
+                            })
                             
-
-                    # quick_retriever_tool은 필요하지 않고, plan_and_schedule만 필요하면 (O)
-                    else:
-                        input_query = process_result.get("input_query")
-                        print("input_query:", input_query)
-                        metadata = process_result.get("metadata")
-                        print("metadata:", metadata)
-
-                input_query = process_result.get("input_query")
-                print("input_query:", input_query)
-                metadata = process_result.get("metadata")
-                print("metadata:", metadata)
-
-                messages[0].content = input_query
-                logging.info(f"원본 쿼리: {original_query}")
-                logging.info(f"FinTool 사용 후의 쿼리: {input_query}")
+                            # 새로운 task_results를 기존 결과에 추가
+                            current_task_results.extend(new_task_results)
+                            
+                            return {
+                                "messages": scheduled_tasks,
+                                "replan_count": state["replan_count"],
+                                "task_results": current_task_results,
+                                "quick_retriever_message": quick_retriever_message,
+                                "key_information": current_key_information
+                            }
+                    except Exception as e:
+                        logging.error(f"Replan execution error: {e}")
+                        return state
                 
-                # 리포트 에이전트에서 처리할 수 없는 기업인지 확인 
-                is_report_can = is_in_report_agent(metadata["companyName"])
-                print("is_report_can:", is_report_can)
-
-                # report_agent_use 판단
-                if is_valid_query(original_query) and is_report_can:
-                    logging.info("report_agent_use 판단 시작")
-                    result_message = self.report_agent_tool.invoke({"query": original_query, "metadata": metadata})
-                    logging.info("report_agent_tool 사용 후 바로 종료합니다.")
-                    # 상위 레벨(should_continue)에서 이 값을 확인해 종료 처리
+                # 최초 실행 시나리오
+                original_query = messages[0].content
+                input_query = self.fin_tool.invoke({"query": original_query})
+                process_result = self.query_processor_tool.invoke({"query": input_query})
+                
+                # query_analyzer로 실행 경로 결정
+                query_analyzer_result = query_analyzer(process_result.get("input_query"))
+                print("query_analyzer_result:", query_analyzer_result)
+                
+                # 결과를 저장할 변수들 초기화
+                task_results = []
+                key_information = []
+                quick_retriever_message = None
+                
+                # Quick Retriever Tool 실행이 필요한 경우
+                if query_analyzer_result.get("quick_retriever_tool"):
+                    quick_retriever_result = self.quick_retriever_tool.invoke(process_result)
+                    print("quick_retriever_result:", quick_retriever_result)
+                    
+                    if quick_retriever_result and quick_retriever_result.get("key_information"):
+                        key_info = quick_retriever_result["key_information"][0]
+                        key_information = quick_retriever_result["key_information"]
+                        
+                        # quick_retriever 결과를 task_results에 추가
+                        task_results.append({
+                            "task": "quick_retriever",
+                            "result": quick_retriever_result
+                        })
+                        
+                        quick_retriever_message = FunctionMessage(
+                            content=json.dumps(quick_retriever_result),
+                            name="quick_retriever_tool",
+                            additional_kwargs={
+                                "tool": key_info["tool"],
+                                "company": key_info["company"],
+                                "referenced_content": key_info["referenced_content"],
+                                "link": key_info["link"],
+                                "idx": 1
+                            }
+                        )
+                        messages.insert(1, quick_retriever_message)
+                    
+                    # Quick Retriever만 사용하는 경우
+                    if not query_analyzer_result.get("plan_and_schedule"):
+                        return {
+                            "messages": messages,
+                            "replan_count": 1,
+                            "key_information": key_information,
+                            "task_results": task_results,
+                            "quick_retriever_message": quick_retriever_message
+                        }
+                
+                # Plan and Schedule 실행이 필요한 경우
+                input_query = process_result.get("input_query")
+                metadata = process_result.get("metadata", {})
+                messages[0].content = input_query
+                
+                # Report Agent 검사
+                if is_valid_query(original_query) and is_in_report_agent(metadata.get("companyName", "")):
+                    result_message = self.report_agent_tool.invoke({
+                        "query": original_query,
+                        "metadata": metadata
+                    })
                     return {
                         "messages": [result_message],
-                        "replan_count": state.get("replan_count", 1),
+                        "replan_count": 1,
                         "report_agent_use": True
                     }
-
+                
+                # Plan and Schedule 실행
                 try:
-
                     initial_tasks = list(planner.stream(messages))
-                    if not initial_tasks:
-                        logging.warning("초기 태스크 생성 실패: 빈 태스크 리스트")
-                        return {"messages": [], "replan_count": state.get("replan_count", 1)}
-                except Exception as e:
-                    logging.error(f"초기 태스크 생성 중 오류 발생: {e}")
-                    return {"messages": [], "replan_count": state.get("replan_count", 1)}
-
-                # 3. task 스케줄링
-                try:
                     if initial_tasks:
-                        logging.info(f"스케줄링할 태스크 수: {len(initial_tasks)}")
                         scheduled_tasks, new_task_results = schedule_tasks.invoke({
                             "messages": messages,
                             "tasks": initial_tasks
                         })
-                        # state의 task_results에 새로운 결과 추가
-                        current_task_results = state.get("task_results", [])
-                        current_task_results.extend(new_task_results)
-                    else:
-                        logging.warning("스케줄링할 태스크가 없음")
-                        scheduled_tasks = []
-                        current_task_results = state.get("task_results", [])
+                        
+                        # plan_and_schedule의 결과를 task_results에 추가
+                        task_results.extend(new_task_results)
+                        
+                        # key_information 업데이트
+                        for result in new_task_results:
+                            if isinstance(result, dict) and 'result' in result:
+                                result_data = result['result']
+                                if isinstance(result_data, dict) and 'key_information' in result_data:
+                                    key_information.extend(result_data['key_information'])
+                        
+                        return {
+                            "messages": scheduled_tasks,
+                            "replan_count": 0,
+                            "task_results": task_results,
+                            "key_information": key_information,
+                            "quick_retriever_message": quick_retriever_message
+                        }
+                        
                 except Exception as e:
-                    logging.error(f"태스크 스케줄링 중 오류: {e}")
-                    scheduled_tasks = []
-                    current_task_results = state.get("task_results", [])
-
-                # 4. replan count 관리
-                if "replan_count" not in state:
-                    state["replan_count"] = 0
-                    print("replan_count 초기화", state["replan_count"])
-                else : 
-                    state["replan_count"] = state["replan_count"] + 1
-                    print("replan_count 증가", state["replan_count"])
-                
-
-                return {
-                    "messages": scheduled_tasks, 
-                    "replan_count": state["replan_count"],
-                    "task_results": current_task_results  # 누적된 task_results 반환
-                }
-
+                    logging.error(f"Plan execution error: {e}")
+                    # 에러가 발생해도 지금까지 수집된 결과 반환
+                    return {
+                        "messages": messages,
+                        "replan_count": 0,
+                        "task_results": task_results,
+                        "key_information": key_information,
+                        "quick_retriever_message": quick_retriever_message
+                    }
+                    
             except Exception as e:
                 logging.error(f"plan_and_schedule 전체 실행 중 예기치 않은 오류: {e}")
                 return {
-                    "messages": [], 
+                    "messages": messages,
                     "replan_count": state.get("replan_count", 1),
-                    "task_results": state.get("task_results", [])  # 기존 task_results 유지
+                    "task_results": state.get("task_results", [])
                 }
-
+            
         return plan_and_schedule

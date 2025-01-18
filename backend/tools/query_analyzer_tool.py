@@ -42,14 +42,20 @@ def query_analyzer(query: str) -> Dict[str, bool]:
     1. quick_retriever_tool
     - FnGuide에서 단순 재무지표를 조회하는 도구
     - FnGuide에서 조회 가능한 재무지표는 다음과 같습니다: {financial_terms}
+    - FnGuide에서 "분기실적"과 같은 상세 정보는 얻기 어렵습니다.
 
     2. plan_and_schedule
+    - FnGuide에서 찾을 수 없는 재무지표를 조회하는 도구
+        - 예시: ["당기순이익", "영업수익", "현금및현금성자산", "운용수익", "영업활동현금흐름", "배당수익률", "배당성향"]
     - 사업보고서 검색이나 웹검색, 애널리스트 보고서 투자의견 등이 필요한 경우 사용하는 도구
+    - 분기 실적에 대한 상세한 조회가 필요한 경우 사용하는 경우
     - 평균, 변화율 계산 등 재무지표들의 계산이 필요한 경우 사용하는 도구
 
     아래는 답변 예시입니다:
     "삼성전자 영업이익이 얼마야?" -> {{"quick_retriever_tool": True, "plan_and_schedule": False}}
     "카카오의 주요 매출원은 무엇인가요?" -> {{"quick_retriever_tool": False, "plan_and_schedule": True}}
+    "GS리테일의 2023년 당기순이익은?" -> {{"quick_retriever_tool": False, "plan_and_schedule": True}}
+    "LG화학의 분기 실적(매출, 영업이익, 순이익)을 상세히 알려주세요." -> {{"quick_retriever_tool": False, "plan_and_schedule": True}}
 
     사용자 질문: "{query}"
 

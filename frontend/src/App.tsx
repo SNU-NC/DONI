@@ -24,6 +24,63 @@ interface Reference {
     content?: string;
 }
 
+interface PlanStep {
+    tool: string;
+    description: string;
+    status: 'pending' | 'running' | 'completed';
+}
+
+const typeIcons = {
+    'analyst_report': '📊',
+    'financial_report': '📑',
+    'market_analysis': '📈',
+    'reference': '📚',
+    'web_search': '🌐',
+    'other': '📄'
+};
+
+const getDisplayType = (ref: Reference) => {
+    if (ref.tool?.includes('analyst')) return 'analyst_report';
+    if (ref.tool?.includes('financial')) return 'financial_report';
+    if (ref.tool?.includes('market')) return 'market_analysis';
+    if (ref.tool?.includes('web')) return 'web_search';
+    return 'other';
+};
+
+const getDisplayTitle = (ref: Reference) => {
+    if (ref.title) return ref.title;
+    if (ref.filename) return ref.filename;
+    return ref.tool || '참고자료';
+};
+
+const getDisplayContent = (ref: Reference) => {
+    let content = '';
+    let details: string[] = [];
+
+    if (ref.referenced_content) {
+        content = ref.referenced_content;
+    } else if (ref.analysis_result) {
+        content = ref.analysis_result;
+    } else if (ref.content) {
+        content = ref.content;
+    }
+    
+    if (ref.broker) {
+        details.push(`${ref.broker}`);
+    }
+    if (ref.target_price) {
+        details.push(`목표가: ${ref.target_price}`);
+    }
+    if (ref.investment_opinion) {
+        details.push(`투자의견: ${ref.investment_opinion}`);
+    }
+    
+    return {
+        mainContent: content,
+        details: details.join(' | ')
+    };
+};
+
 declare global {
     interface Window {
         TypeHangul: any;
@@ -187,57 +244,6 @@ const ChatPage = memo(React.forwardRef<HTMLDivElement, { messages: Message[]; is
 }));
 
 const ReferencePage = React.forwardRef<HTMLDivElement, { references: Reference[] }>((props, ref) => {
-    const typeIcons = {
-        'analyst_report': '📊',
-        'financial_report': '📑',
-        'market_analysis': '📈',
-        'reference': '📚',
-        'web_search': '🌐',
-        'other': '📄'
-    };
-
-    const getDisplayContent = (ref: Reference) => {
-        let content = '';
-        let details: string[] = [];
-
-        if (ref.referenced_content) {
-            content = ref.referenced_content;
-        } else if (ref.analysis_result) {
-            content = ref.analysis_result;
-        } else if (ref.content) {
-            content = ref.content;
-        }
-        
-        if (ref.broker) {
-            details.push(`${ref.broker}`);
-        }
-        if (ref.target_price) {
-            details.push(`목표가: ${ref.target_price}`);
-        }
-        if (ref.investment_opinion) {
-            details.push(`투자의견: ${ref.investment_opinion}`);
-        }
-        
-        return {
-            mainContent: content,
-            details: details.join(' | ')
-        };
-    };
-
-    const getDisplayTitle = (ref: Reference) => {
-        if (ref.title) return ref.title;
-        if (ref.filename) return ref.filename;
-        return ref.tool || '참고자료';
-    };
-
-    const getDisplayType = (ref: Reference) => {
-        if (ref.tool?.includes('analyst')) return 'analyst_report';
-        if (ref.tool?.includes('financial')) return 'financial_report';
-        if (ref.tool?.includes('market')) return 'market_analysis';
-        if (ref.tool?.includes('web')) return 'web_search';
-        return 'other';
-    };
-
     return (
         <div className="page reference-page" ref={ref}>
             <div className="page-header">
@@ -265,6 +271,32 @@ const ReferencePage = React.forwardRef<HTMLDivElement, { references: Reference[]
                         </div>
                     );
                 })}
+            </div>
+        </div>
+    );
+});
+
+const PlanningPage = React.forwardRef<HTMLDivElement, { plans: PlanStep[] }>((props, ref) => {
+    return (
+        <div className="page planning-page" ref={ref}>
+            <div className="page-header">
+                <h2>🤔 생각의 과정</h2>
+            </div>
+            <div className="planning-container">
+                {props.plans.map((plan, idx) => (
+                    <div key={idx} className={`plan-step ${plan.status}`}>
+                        <div className="plan-number">{idx + 1}</div>
+                        <div className="plan-content">
+                            <div className="plan-tool">{plan.tool}</div>
+                            <div className="plan-description">{plan.description}</div>
+                        </div>
+                        <div className="plan-status">
+                            {plan.status === 'pending' && '⏳'}
+                            {plan.status === 'running' && '🔄'}
+                            {plan.status === 'completed' && '✅'}
+                        </div>
+                    </div>
+                ))}
             </div>
         </div>
     );
@@ -303,8 +335,61 @@ function App() {
         timestamp: new Date().toLocaleTimeString()
     }]);
     const [references, setReferences] = useState<Reference[]>([]);
+    const [plans, setPlans] = useState<PlanStep[]>([]);
     const [isThinking, setIsThinking] = useState(false);
-    const bookRef = useRef<any>();
+
+    // 태스크 진행 상황을 주기적으로 확인
+    useEffect(() => {
+        let intervalId: NodeJS.Timeout;
+        
+        if (isThinking) {
+            intervalId = setInterval(async () => {
+                try {
+                    const response = await fetch('http://localhost:8000/api/task-progress');
+                    const data = await response.json();
+                    console.log('Task Progress Data:', data); // 디버깅용 로그
+                    
+                    // plans 데이터 처리
+                    if (data.plans && data.plans.length > 0) {
+                        const latestPlan = data.plans[data.plans.length - 1];
+                        console.log('Latest Plan:', latestPlan); // 디버깅용 로그
+                        
+                        if (latestPlan.plan) {
+                            const newPlans = latestPlan.plan.map((task: any, index: number) => ({
+                                tool: task.tool || '알 수 없는 도구',
+                                description: task.description || JSON.stringify(task),
+                                status: task.status || 'pending'
+                            }));
+                            console.log('Processed Plans:', newPlans); // 디버깅용 로그
+                            setPlans(newPlans);
+                        }
+                    }
+
+                    // executions 데이터 처리
+                    if (data.executions && data.executions.length > 0) {
+                        const latestExecution = data.executions[data.executions.length - 1];
+                        console.log('Latest Execution:', latestExecution); // 디버깅용 로그
+                        
+                        // 실행 결과에 따라 plans 상태 업데이트
+                        setPlans(prevPlans => 
+                            prevPlans.map(plan => ({
+                                ...plan,
+                                status: 'completed'
+                            }))
+                        );
+                    }
+                } catch (error) {
+                    console.error('태스크 진행 상황 조회 중 오류:', error);
+                }
+            }, 1000); // 1초마다 확인
+        }
+
+        return () => {
+            if (intervalId) {
+                clearInterval(intervalId);
+            }
+        };
+    }, [isThinking]);
 
     const handleSendMessage = useCallback(async (inputValue: string) => {
         const timestamp = new Date().toLocaleTimeString('ko-KR');
@@ -316,14 +401,18 @@ function App() {
 
         setMessages(prev => [...prev, newMessage]);
         setIsThinking(true);
+        setPlans([]); // 새 질문이 시작될 때 계획 초기화
         
         try {
             const response = await fetch('http://localhost:8000/api/search', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json'
+                    'Accept': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
                 },
+                mode: 'cors',
+                credentials: 'omit',
                 body: JSON.stringify({ query: inputValue })
             });
 
@@ -332,10 +421,12 @@ function App() {
             }
 
             const data = await response.json();
+            console.log('Search API 응답:', data);  // 디버깅용 로그
             
             setIsThinking(false);
             
             if (data.error) {
+                console.error('API 오류:', data.message);
                 setMessages(prev => [...prev, {
                     content: data.message,
                     isUser: false,
@@ -349,10 +440,8 @@ function App() {
                 }]);
                 
                 if (data.docs && data.docs.length > 0) {
+                    console.log('참고 자료:', data.docs);
                     setReferences(data.docs);
-                    setTimeout(() => {
-                        bookRef.current?.pageFlip().flipNext();
-                    }, 1000);
                 }
             }
         } catch (error) {
@@ -368,35 +457,68 @@ function App() {
 
     return (
         <div className="app-container">
-            <HTMLFlipBook
-                width={600}
-                height={800}
-                size="stretch"
-                minWidth={300}
-                maxWidth={1000}
-                minHeight={400}
-                maxHeight={1000}
-                maxShadowOpacity={0.5}
-                showCover={false}
-                mobileScrollSupport={true}
-                className="book"
-                ref={bookRef}
-                style={{}}
-                startPage={0}
-                drawShadow={true}
-                flippingTime={1000}
-                usePortrait={true}
-                startZIndex={0}
-                autoSize={true}
-                clickEventForward={true}
-                useMouseEvents={true}
-                swipeDistance={30}
-                showPageCorners={true}
-                disableFlipByClick={false}
-            >
-                <ChatPage messages={messages} isThinking={isThinking} />
-                <ReferencePage references={references} />
-            </HTMLFlipBook>
+            <div className="sections-container">
+                <section className="chat-section">
+                    <div className="section-header">
+                        <h2>💬 대화</h2>
+                    </div>
+                    <ChatMessages messages={messages} isThinking={isThinking} />
+                </section>
+                
+                <section className="planning-section">
+                    <div className="section-header">
+                        <h2>🤔 생각의 과정</h2>
+                    </div>
+                    <div className="planning-container">
+                        <div className="debug-info">
+                            <pre>{JSON.stringify(plans, null, 2)}</pre>
+                        </div>
+                        {plans.map((plan, idx) => (
+                            <div key={idx} className={`plan-step ${plan.status}`}>
+                                <div className="plan-number">{idx + 1}</div>
+                                <div className="plan-content">
+                                    <div className="plan-tool">{plan.tool}</div>
+                                    <div className="plan-description">{plan.description}</div>
+                                </div>
+                                <div className="plan-status">
+                                    {plan.status === 'pending' && '⏳'}
+                                    {plan.status === 'running' && '🔄'}
+                                    {plan.status === 'completed' && '✅'}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+                
+                <section className="reference-section">
+                    <div className="section-header">
+                        <h2>📚 참고 자료</h2>
+                    </div>
+                    <div className="references-container">
+                        {references.map((ref, idx) => {
+                            const displayType = getDisplayType(ref);
+                            const displayTitle = getDisplayTitle(ref);
+                            const {mainContent, details} = getDisplayContent(ref);
+                            
+                            return (
+                                <div key={idx} className="reference-item">
+                                    <div className="reference-title">
+                                        {typeIcons[displayType as keyof typeof typeIcons]} {displayTitle}
+                                        {ref.page_number && ` (p.${ref.page_number})`}
+                                    </div>
+                                    {details && <div className="reference-details">{details}</div>}
+                                    <div className="reference-content">{mainContent}</div>
+                                    {ref.link && (
+                                        <a href={ref.link} target="_blank" rel="noopener noreferrer" className="reference-link">
+                                            원문 보기
+                                        </a>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </section>
+            </div>
             
             <InputComponent onSend={handleSendMessage} isThinking={isThinking} />
         </div>

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -26,7 +26,7 @@ app = FastAPI()
 # CORS 설정
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:5173"],  # 프론트엔드 서버
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -47,6 +47,9 @@ app.mount("/component", StaticFiles(directory=os.path.join(FRONTEND_PATH, "compo
 
 # LLMCompiler 인스턴스 생성
 llm_compiler = LLMCompiler()
+
+# 태스크 진행 상황을 저장할 전역 변수
+task_progress = []
 
 class Query(BaseModel):
     query: str
@@ -98,6 +101,75 @@ async def search(query: Query):
     except Exception as e:
         logging.error(f"Search API 오류: {str(e)}")
         return {"error": True, "message": "서버 오류가 발생했습니다."}
+
+@app.post("/api/task-progress")
+async def update_task_progress(data: dict):
+    """
+    태스크 진행 상황을 업데이트하는 엔드포인트
+    """
+    try:
+        # 데이터 형식 검증
+        if not isinstance(data, dict):
+            raise HTTPException(status_code=400, detail="잘못된 데이터 형식입니다.")
+        
+        # 필수 필드 검증
+        required_fields = ["timestamp", "status"]
+        for field in required_fields:
+            if field not in data:
+                raise HTTPException(status_code=400, detail=f"필수 필드가 누락되었습니다: {field}")
+        
+        # 데이터 타입에 따른 처리
+        if data.get("type") == "plan":
+            # 계획 데이터 처리
+            task_progress.append({
+                "type": "plan",
+                "timestamp": data["timestamp"],
+                "status": data["status"],
+                "plan": data["plan"],
+                "query": data.get("query", "")
+            })
+        elif data.get("type") == "execution":
+            # 실행 결과 데이터 처리
+            task_progress.append({
+                "type": "execution",
+                "timestamp": data["timestamp"],
+                "status": data["status"],
+                "results": data.get("results", []),
+                "query": data.get("query", "")
+            })
+        else:
+            # 기타 데이터 처리
+            task_progress.append(data)
+            
+        return {
+            "status": "success",
+            "message": "태스크 진행 상황이 업데이트되었습니다.",
+            "data": task_progress[-1]  # 방금 추가된 데이터 반환
+        }
+    except Exception as e:
+        logging.error(f"태스크 진행 상황 업데이트 중 오류 발생: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/task-progress")
+async def get_task_progress():
+    """
+    현재까지의 태스크 진행 상황을 조회하는 엔드포인트
+    """
+    try:
+        # 진행 상황을 시간순으로 정렬
+        sorted_progress = sorted(task_progress, key=lambda x: x.get("timestamp", ""))
+        
+        # 타입별로 데이터 구성
+        response = {
+            "plans": [item for item in sorted_progress if item.get("type") == "plan"],
+            "executions": [item for item in sorted_progress if item.get("type") == "execution"],
+            "others": [item for item in sorted_progress if item.get("type") not in ["plan", "execution"]]
+        }
+        
+        return response
+    except Exception as e:
+        logging.error(f"태스크 진행 상황 조회 중 오류 발생: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # 메인 페이지 리다이렉트
 @app.get("/")

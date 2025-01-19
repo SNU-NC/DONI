@@ -13,7 +13,7 @@ from langchain_core.outputs import LLMResult
 import logging
 
 # 로깅 설정
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # 도구 임포트 및 초기화 코드
@@ -47,7 +47,7 @@ class StreamingEventHandler(BaseCallbackHandler):
         }
         self.events.append(step_info)
         self.current_step = step_info
-        logger.info("💭 LLM 시작 이벤트 기록됨")
+        logger.debug("💭 LLM 시작 이벤트 기록됨")
 
     def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
         if hasattr(response, 'generations') and response.generations:
@@ -64,7 +64,7 @@ class StreamingEventHandler(BaseCallbackHandler):
         }
         self.events.append(step_info)
         self.current_step = step_info
-        logger.info("📝 LLM 종료 이벤트 기록됨")
+        logger.debug("📝 LLM 종료 이벤트 기록됨")
 
     def on_tool_start(self, serialized: Dict[str, Any], input_str: str, **kwargs: Any) -> None:
         tool_name = serialized.get("name", "알 수 없는 도구")
@@ -104,7 +104,7 @@ class StreamingEventHandler(BaseCallbackHandler):
         }
         self.events.append(step_info)
         self.current_step = step_info
-        logger.info("🔗 체인 시작 이벤트 기록됨")
+        logger.debug("🔗 체인 시작 이벤트 기록됨")
 
     def on_chain_end(self, outputs: Dict[str, Any], **kwargs: Any) -> None:
         logger.debug(f"🔗 체인 완료 - 출력: {str(outputs)[:200]}...")
@@ -116,7 +116,7 @@ class StreamingEventHandler(BaseCallbackHandler):
         }
         self.events.append(step_info)
         self.current_step = step_info
-        logger.info("✨ 체인 종료 이벤트 기록됨")
+        logger.debug("✨ 체인 종료 이벤트 기록됨")
 
     def get_current_step(self) -> Optional[Dict[str, Any]]:
         if self.current_step:
@@ -125,8 +125,8 @@ class StreamingEventHandler(BaseCallbackHandler):
 
 def initialize_chain():
     # LLM 초기화
-    llm_4o = ChatOpenAI(model="gpt-4-0125-preview", api_key=os.getenv("OPENAI_API_KEY"))
-    llm_mini = ChatOpenAI(model="gpt-4o-mini", api_key=os.getenv("OPENAI_API_KEY"))
+    llm_4o = ChatOpenAI(model="gpt-4-0125-preview", api_key=os.getenv("OPENAI_API_KEY"), temperature=0)
+    llm_mini = ChatOpenAI(model="gpt-4o-mini", api_key=os.getenv("OPENAI_API_KEY"), temperature=0)
     clovaX = ChatClovaX(model="HCX-003", clovastudio_api_key=os.getenv("CLOVA_API_KEY"), temperature=0.1)
 
     # 도구 초기화
@@ -163,7 +163,6 @@ def initialize_chain():
     def should_continue(state):
         messages = state["messages"]
         replan_count = state["replan_count"]
-        print("should_continue의 state 확인: ", state["report_agent_use"])
         if state.get("report_agent_use", False):
             print("report agent를 사용합니다.")
             return END

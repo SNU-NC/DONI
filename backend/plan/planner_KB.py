@@ -444,19 +444,21 @@ class Planner:
             print("Plan*Scheduler 시작할 때의 replan Count를 체크하겠습니다. ", state.get("replan_count", 404))
             
             try:
-                # replan 시나리오 처리
+                # 1. replan 시나리오 처리 (replan_count가 있는 경우)
                 if "replan_count" in state:
                     state["replan_count"] += 1
+                    print("replan_count 증가", state["replan_count"])
                     
-                    # 기존의 task_results와 key_information 유지
+                    # 이전 실행 결과 유지
                     current_task_results = state.get("task_results", [])
                     current_key_information = state.get("key_information", [])
                     
-                    # quick_retriever_message 처리
+                    # 이전 quick_retriever 결과가 있다면 메시지에 추가
                     quick_retriever_message = state.get("quick_retriever_message")
                     if quick_retriever_message and quick_retriever_message not in messages:
                         messages.insert(1, quick_retriever_message)
                     
+                    # replan 실행
                     try:
                         initial_tasks = list(planner.stream(messages))
                         if initial_tasks:
@@ -479,21 +481,23 @@ class Planner:
                         logging.error(f"Replan execution error: {e}")
                         return state
                 
-                # 최초 실행 시나리오
+                # 2. 최초 실행 시나리오
                 original_query = messages[0].content
+                # 금융 용어 처리 및 쿼리 전처리
                 input_query = self.fin_tool.invoke({"query": original_query})
                 process_result = self.query_processor_tool.invoke({"query": input_query})
-                
-                # query_analyzer로 실행 경로 결정
+                print("process_result:", process_result)
+
+                # 쿼리 분석으로 실행 경로 결정
                 query_analyzer_result = query_analyzer(process_result.get("input_query"))
                 print("query_analyzer_result:", query_analyzer_result)
                 
-                # 결과를 저장할 변수들 초기화
+                # 결과 저장용 변수 초기화
                 task_results = []
                 key_information = []
                 quick_retriever_message = None
                 
-                # Quick Retriever Tool 실행이 필요한 경우
+                # 3. Quick Retriever 처리
                 if query_analyzer_result.get("quick_retriever_tool"):
                     quick_retriever_result = self.quick_retriever_tool.invoke(process_result)
                     print("quick_retriever_result:", quick_retriever_result)
@@ -502,12 +506,13 @@ class Planner:
                         key_info = quick_retriever_result["key_information"][0]
                         key_information = quick_retriever_result["key_information"]
                         
-                        # quick_retriever 결과를 task_results에 추가
+                        # quick_retriever 결과 저장
                         task_results.append({
                             "task": "quick_retriever",
                             "result": quick_retriever_result
                         })
                         
+                        # 결과를 메시지로 변환
                         quick_retriever_message = FunctionMessage(
                             content=json.dumps(quick_retriever_result),
                             name="quick_retriever_tool",
@@ -516,13 +521,14 @@ class Planner:
                                 "company": key_info["company"],
                                 "referenced_content": key_info["referenced_content"],
                                 "link": key_info["link"],
-                                "idx": 1
+                                "idx": 1  # 첫번째 테스크로 처리
                             }
                         )
                         messages.insert(1, quick_retriever_message)
                     
-                    # Quick Retriever만 사용하는 경우
+                    # plan_and_schedule 사용 필요 없으면, join으로 메시지 보내기
                     if not query_analyzer_result.get("plan_and_schedule"):
+                        print("quick_retriever_tool만 사용합니다.")
                         return {
                             "messages": messages,
                             "replan_count": 1,
@@ -531,36 +537,48 @@ class Planner:
                             "quick_retriever_message": quick_retriever_message
                         }
                 
-                # Plan and Schedule 실행이 필요한 경우
+                # 4. Plan and Schedule 실행이 필요한 경우
                 input_query = process_result.get("input_query")
+                print("input_query:", input_query)
                 metadata = process_result.get("metadata", {})
+                print("metadata:", metadata)
                 messages[0].content = input_query
+                logging.info(f"원본 쿼리: {original_query}")
+                logging.info(f"FinTool 사용 후의 쿼리: {input_query}")
                 
-                # Report Agent 검사
-                if is_valid_query(original_query) and is_in_report_agent(metadata.get("companyName", "")):
+                # 리포트 에이전트에서 처리할 수 없는 기업인지 확인 
+                is_report_can = is_in_report_agent(metadata.get("companyName", ""))
+                print("is_report_can:", is_report_can)
+
+                # report_agent_use 판단
+                if is_valid_query(original_query) and is_report_can:
+                    logging.info("report_agent_use 판단 시작")
                     result_message = self.report_agent_tool.invoke({
                         "query": original_query,
                         "metadata": metadata
                     })
+                    logging.info("report_agent_tool 사용 후 바로 종료합니다.")
+                    # 상위 레벨(should_continue)에서 이 값을 확인해 종료 처리
                     return {
                         "messages": [result_message],
                         "replan_count": 1,
                         "report_agent_use": True
                     }
                 
-                # Plan and Schedule 실행
+                # 6. Plan and Schedule 실행
                 try:
                     initial_tasks = list(planner.stream(messages))
                     if initial_tasks:
+                        logging.info(f"스케줄링할 태스크 수: {len(initial_tasks)}")
                         scheduled_tasks, new_task_results = schedule_tasks.invoke({
                             "messages": messages,
                             "tasks": initial_tasks
                         })
                         
-                        # plan_and_schedule의 결과를 task_results에 추가
+                        # 실행 결과 저장
                         task_results.extend(new_task_results)
                         
-                        # key_information 업데이트
+                        # key_information 수집
                         for result in new_task_results:
                             if isinstance(result, dict) and 'result' in result:
                                 result_data = result['result']

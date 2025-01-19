@@ -14,7 +14,9 @@ class QuickRetrieverToolInputSchema(BaseModel):
     metadata: Dict[str, Any] = Field(..., description="메타데이터(기업명)")
 
 class QuickRetrieverTool(BaseTool):
-    """기업의 재무정보를 빠르게 검색하는 도구"""
+    """기업의 재무정보를 빠르게 검색하는 도구
+    quick_retriever_tool을 통해 검색된 정보를 가지고 다시 계산하는 일은 하지 않습니다.
+    """
     
     name: str = "quick_retriever_tool"
     description: str = _quick_retriever_tool_DESCRIPTION
@@ -51,7 +53,7 @@ class QuickRetrieverTool(BaseTool):
             "자산", "부채", "자본", "매출",
 
             # 1. 안정성비율
-            "유동비율", "부채비율", "이자보상배율", "자기자본비율", "판매비와관리비", "자산총계"
+            "유동비율", "부채비율", "이자보상배율", "자기자본비율", "판매비와관리비"
             "판관비",
             
             # 2. 성장성비율, 수익성비율

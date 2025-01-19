@@ -312,6 +312,7 @@ COMBINED_FINANCIAL_REPORT_PROMPT = PromptTemplate(
 5. financial_statement_search['referenced_content']에 사업보고서에서 추가 정보를 찾아야 한다고 말한 경우 반드시 **financial_report_search** 도구를 호출하여 추가 정보를 검색해주세요
 
 ** 주의사항 **
+**완벽히 같은 단어가 아니라면 정보가 틀릴 수 있으므로 꼭 다른 도구를 호출하세요**
 최종 출력시 financial_statement_search와 financial_report_search 데이터들을 스스로 판단하여 요약하지 마세요.
 함부로 _end_를 출력하지 말고 사용자의 요청을 완벽히 반영했는지 확인해주세요
 

@@ -217,12 +217,13 @@ class QuickRetrieverTool(BaseTool):
                 ) 
 
             formatted_contents = " ".join(formatted_contents)
-            formatted_contents = formatted_contents + "(단위 : '%' 또는 '억원') 이 정보는 FnGuide에서 확인되었습니다."
+            formatted_contents = formatted_contents + "이 데이터의 단위는 (단위 : '%' 또는 '억원')입니다. 적합한 단위를 선택해주세요."
             # 여기바꿔보기
             
             key_information = [
                 {
-                    "tool": "웹검색 재무제표 도구",
+                    "tool": "FnGuide 검색 도구",
+                    'source': 'FnGuide',
                     "company": results[0]['company'],
                     "referenced_content": "comp.fnguide.com",
                     "link": results[0]['link']

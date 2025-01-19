@@ -56,6 +56,7 @@ def query_analyzer(query: str) -> Dict[str, bool]:
     "카카오의 주요 매출원은 무엇인가요?" -> {{"quick_retriever_tool": False, "plan_and_schedule": True}}
     "GS리테일의 2023년 당기순이익은?" -> {{"quick_retriever_tool": False, "plan_and_schedule": True}}
     "LG화학의 분기 실적(매출, 영업이익, 순이익)을 상세히 알려주세요." -> {{"quick_retriever_tool": False, "plan_and_schedule": True}}
+    "에코프로머티의 판관비는 작년 대비 어느 정도 증가했는지 알 수 있을까요?" -> {{"quick_retriever_tool": True, "plan_and_schedule": True}}
 
     사용자 질문: "{query}"
 

@@ -226,7 +226,7 @@ class WebSearchTools(BaseTool):
     ) -> dict:
         try:
             # company가 None일 경우 query만 사용
-            search_query = f"{company} {query}" if company else query
+            search_query = f"{query}"
             
             # 검색 실행
             print(f"검색 쿼리: {search_query}")

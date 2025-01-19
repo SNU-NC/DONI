@@ -163,13 +163,17 @@ def initialize_chain():
     def should_continue(state):
         messages = state["messages"]
         replan_count = state["replan_count"]
-
-        if state.get("report_agent_use", True):
+        print("should_continue의 state 확인: ", state["report_agent_use"])
+        if state.get("report_agent_use", False):
             print("report agent를 사용합니다.")
             return END
-
+        
+        print("should_continue의 messages[-1] 확인: ", messages[-1])
+        print("should_continue의 replan_count 확인: ", replan_count)
+        print("should_continue의 messages 확인: ", messages)
         if isinstance(messages[-1], AIMessage):
-            if replan_count >= 2:
+            print("messages[-1] 확인: ", messages[-1])
+            if replan_count >= 1:
                 print("replan_count 이거 때문에 죽음   : ", replan_count)
             return END
         return "plan_and_schedule"

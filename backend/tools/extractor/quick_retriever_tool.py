@@ -211,18 +211,23 @@ class QuickRetrieverTool(BaseTool):
                 
             # 여러 결과를 하나의 문자열로 결합
             formatted_contents = []
-            # key_information = []
+            
+            # 퍼센트(%) 단위를 사용하는 재무지표들
+            percent_metrics = {
+                "유동비율", "부채비율", "이자보상배율", "자기자본비율", 
+                "영업이익률", "ROA", "ROE", "ROIC", 
+                "총자산이익률", "자기자본이익률", "투자자본이익률", "총자산회전율"
+            }
             
             for result in results:
-                
+                unit = "%" if result['financial_term'] in percent_metrics else "억원"
                 formatted_contents.append(
                     f"{result['company']}의 {result['year']}년 {result['financial_term']}은(는) "
-                    f"{result['result']}입니다."
-                ) 
+                    f"{result['result']}{unit}입니다."
+                )
 
             formatted_contents = " ".join(formatted_contents)
-            formatted_contents = formatted_contents + "(단위 : '%' 또는 '억원') 이 정보는 FnGuide에서 확인되었습니다."
-            # 여기바꿔보기
+            formatted_contents = formatted_contents + " 이 정보는 FnGuide에서 확인되었습니다."
             
             key_information = [
                 {

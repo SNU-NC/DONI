@@ -29,6 +29,7 @@ def query_analyzer(query: str) -> Dict[str, bool]:
         
         # 2. 성장성비율, 수익성비율
         "EPS", "영업이익률", "EBITDA", "ROA", "ROE", "ROIC",
+        "주당순이익", "총자산이익률", "자기자본이익률", "투자자본이익률",
         
         # 3. 활동성비율
         "총자산회전율"

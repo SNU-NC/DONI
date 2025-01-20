@@ -19,7 +19,7 @@ from tools.analyze.stockprice.StockAnalyzerTool import StockAnalyzerTool
 from tools.analyze.stockprice.CombinedAnalysisTool import CombinedAnalysisTool
 from langgraph.graph.message import add_messages
 
-from plan.planner_KB import Planner
+from plan.planner_KB_hcx import Planner
 from plan.join_hyper_hcx import create_joiner  # HyperCLOVA 버전의 joiner 사용
 from plan.reference import TaskResult, add_task_results
 
@@ -43,7 +43,7 @@ def initialize_chain():
 
     # 프롬프트와 플래너 초기화
     prompt = hub.pull("snunc/rag-llm-compiler")
-    planner = Planner(llm_4o, llm_mini, clovaX, llm_4o, tools, prompt)
+    planner = Planner(llm_4o, llm_mini, clovaX, tools)
     joiner = create_joiner(None)
 
     # 그래프 상태 정의

@@ -1,27 +1,12 @@
+import asyncio
 from dataclasses import dataclass
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any, Union, Literal
 from langchain_core.messages import AIMessage, SystemMessage, HumanMessage, BaseMessage, FunctionMessage
 from plan.reference import TaskResult
 from plan.hcx import HyperCLOVA
 from ast import literal_eval
+from plan.models import JoinResult, Action, ActionContent, FinalResponseContent, ReplanContent
 
-@dataclass
-class FinalResponse:
-    response: str
-
-@dataclass
-class Replan:
-    feedback: str
-
-@dataclass
-class Action:
-    type: str
-    content: Union[FinalResponse, Replan]
-
-@dataclass
-class JoinResult:
-    thought: str
-    action: Action
 
 def parse_key_information(task_list: List[TaskResult]) -> List[str]:
     """key_information 파싱"""
@@ -109,7 +94,7 @@ async def structured_llm_call(messages: List[BaseMessage], is_final: bool = Fals
             "type": "선택된 행동 유형 ('final_response' 또는 'replan')",
             "content": {
                 "final_response": {
-                    "response": "[답변]: <핵심 답변>\n[답변 생성 근거]: <답변 도출 과정과 근거>\n"
+                    "response": "[답변]: <핵심 답변, 답변 생성 근거>"
                 },
                 "replan": {
                     "feedback": "재계획이 필요한 이유와 제안사항"
@@ -124,7 +109,7 @@ async def structured_llm_call(messages: List[BaseMessage], is_final: bool = Fals
             "type": "선택된 행동 유형 ('final_response')",
             "content": {
                 "final_response": {
-                    "response": "[답변]: <핵심 답변>\n[답변 생성 근거]: <답변 도출 과정과 근거>\n[한계 및 개선방안] : <답변의 한계 및 개선방안>"
+                    "response": "[답변]: <핵심 답변 , 답변 생성 근거 >"
                 }
             }
         }
@@ -161,7 +146,7 @@ async def structured_llm_call(messages: List[BaseMessage], is_final: bool = Fals
         return result
 
     except Exception as e:
-        print(f"Error in structured_llm_call: {str(e)}")
+        print(f"[JOINER] Error in structured_llm_call: {str(e)}")
         raise
 
 def create_joiner(llm: Any) -> callable:
@@ -172,7 +157,7 @@ def create_joiner(llm: Any) -> callable:
         task_results = state.get("task_results", [])
         key_info = parse_key_information(task_results)
         report_agent_use = state.get("report_agent_use", False)
-        replan_count = state.get("replan_count", 1)
+        replan_count = state.get("replan_count", 0)
         
         if not messages:
             return {
@@ -199,15 +184,16 @@ def create_joiner(llm: Any) -> callable:
                 return {
                     "messages": [
                         thought_message,
-                        SystemMessage(content=f"Context from last attempt: {result.action.content.feedback}")
+                        SystemMessage(content=f"Context from last attempt: {result.action.feedback}")
                     ],
+                    "replan_count": replan_count + 1,
                     "key_information": key_info
                 }
             else:
                 return {
                     "messages": [
                         thought_message,
-                        AIMessage(content=result.action.content.response)
+                        AIMessage(content=result.action.response)
                     ],
                     "key_information": key_info
                 }

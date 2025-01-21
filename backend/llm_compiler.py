@@ -6,14 +6,17 @@ from typing_extensions import TypedDict
 from langgraph.graph import END, StateGraph, START
 from typing import Annotated, List, Any, Dict, Optional, AsyncGenerator
 from uuid import UUID
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, FunctionMessage
 from langchain_core.messages import HumanMessage
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.outputs import LLMResult
 import logging
+import aiohttp
+from datetime import datetime
+import asyncio
 
 # 로깅 설정
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # 도구 임포트 및 초기화 코드
@@ -31,97 +34,6 @@ from langgraph.graph.message import add_messages
 from plan.planner_KB import Planner
 from plan.join import create_joiner
 from plan.reference import TaskResult, add_task_results
-
-class StreamingEventHandler(BaseCallbackHandler):
-    def __init__(self):
-        self.events = []
-        self.current_step = None
-        logger.info("🔄 StreamingEventHandler 초기화됨")
-        
-    def on_llm_start(self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any) -> None:
-        logger.debug(f"🚀 LLM 시작 - 프롬프트: {prompts[:200]}...")  # 프롬프트가 너무 길 수 있으므로 일부만 출력
-        step_info = {
-            "type": "llm_start",
-            "content": "LLM이 생각하는 중입니다...",
-            "show_in_chat": True
-        }
-        self.events.append(step_info)
-        self.current_step = step_info
-        logger.debug("💭 LLM 시작 이벤트 기록됨")
-
-    def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
-        if hasattr(response, 'generations') and response.generations:
-            content = response.generations[0][0].text
-        else:
-            content = str(response)
-        
-        logger.debug(f"✅ LLM 완료 - 응답: {content[:200]}...")  # 응답이 너무 길 수 있으므로 일부만 출력
-        
-        step_info = {
-            "type": "llm_end",
-            "content": content,
-            "show_in_chat": False
-        }
-        self.events.append(step_info)
-        self.current_step = step_info
-        logger.debug("📝 LLM 종료 이벤트 기록됨")
-
-    def on_tool_start(self, serialized: Dict[str, Any], input_str: str, **kwargs: Any) -> None:
-        tool_name = serialized.get("name", "알 수 없는 도구")
-        logger.debug(f"🔧 도구 시작 - {tool_name}: {input_str[:200]}...")
-        
-        step_info = {
-            "type": "tool_start",
-            "content": f"🔧 {tool_name} 도구를 사용하여 정보를 찾고 있습니다...",
-            "tool_name": tool_name,
-            "show_in_chat": True
-        }
-        self.events.append(step_info)
-        self.current_step = step_info
-        logger.info(f"🛠️ {tool_name} 도구 시작 이벤트 기록됨")
-
-    def on_tool_end(self, output: str, **kwargs: Any) -> None:
-        summary = output[:200] + "..." if len(output) > 200 else output
-        logger.debug(f"🎯 도구 완료 - 결과: {summary}")
-        
-        step_info = {
-            "type": "tool_end",
-            "content": f"🎯 도구 실행 결과: {summary}",
-            "full_output": output,
-            "show_in_chat": True
-        }
-        self.events.append(step_info)
-        self.current_step = step_info
-        logger.info("🏁 도구 종료 이벤트 기록됨")
-
-    def on_chain_start(self, serialized: Dict[str, Any], inputs: Dict[str, Any], **kwargs: Any) -> None:
-        logger.debug(f"⛓️ 체인 시작 - 입력: {str(inputs)[:200]}...")
-        
-        step_info = {
-            "type": "chain_start",
-            "content": "새로운 단계를 시작합니다...",
-            "show_in_chat": False
-        }
-        self.events.append(step_info)
-        self.current_step = step_info
-        logger.debug("🔗 체인 시작 이벤트 기록됨")
-
-    def on_chain_end(self, outputs: Dict[str, Any], **kwargs: Any) -> None:
-        logger.debug(f"🔗 체인 완료 - 출력: {str(outputs)[:200]}...")
-        
-        step_info = {
-            "type": "chain_end",
-            "content": "단계가 완료되었습니다.",
-            "show_in_chat": False
-        }
-        self.events.append(step_info)
-        self.current_step = step_info
-        logger.debug("✨ 체인 종료 이벤트 기록됨")
-
-    def get_current_step(self) -> Optional[Dict[str, Any]]:
-        if self.current_step:
-            logger.debug(f"현재 단계 반환: {self.current_step['type']}")
-        return self.current_step
 
 def initialize_chain():
     # LLM 초기화
@@ -189,9 +101,145 @@ class LLMCompiler:
         self.chain = initialize_chain()
         logger.info("✅ LLMCompiler 초기화 완료")
 
+    async def arun(self, query: str) -> dict:
+        """비동기 실행 메서드"""
+        logger.info(f"📝 비동기 실행 시작 - 쿼리: {query}")
+        try:
+            state = {
+                "messages": [HumanMessage(content=query)],
+                "key_information": [],
+            }
+            logger.debug(f"초기 상태 설정: {state}")
+            
+            current_tasks = []
+            final_result = {
+                "answer": "",
+                "docs": []
+            }
+            
+            # 비동기로 체인 실행
+            async for step in self.chain.astream(state):
+                logger.debug(f"체인 실행 단계: {str(step)}")
+                
+                # 계획 단계 처리
+                if isinstance(step, dict) and "plan_and_schedule" in step:
+                    plan_data = {
+                        "type": "plan",
+                        "timestamp": datetime.now().isoformat(),
+                        "status": "planning",
+                        "plan": [
+                            {
+                                "tool": str(task.get("tool")),
+                                "description": str(task.get("args", {})),
+                                "status": "pending"
+                            }
+                            for task in current_tasks
+                        ]
+                    }
+                    await self._update_plan_status(plan_data)
+                
+                # 태스크 실행 단계 처리
+                if isinstance(step, dict) and "join" in step:
+                    for msg in step["join"].get("messages", []):
+                        if isinstance(msg, FunctionMessage):
+                            execution_data = {
+                                "type": "execution",
+                                "timestamp": datetime.now().isoformat(),
+                                "status": "running",
+                                "tool": msg.name,
+                                "task_id": msg.additional_kwargs.get("idx"),
+                                "args": msg.additional_kwargs.get("args", {})
+                            }
+                            await self._update_execution_status(execution_data)
+                
+                # 최종 결과 처리
+                if isinstance(step, dict) and "join" in step and "messages" in step["join"]:
+                    final_message = step["join"]["messages"][-1]
+                    if isinstance(final_message, AIMessage):
+                        docs = []
+                        if "key_information" in step["join"]:
+                            for info in step["join"]["key_information"]:
+                                doc = {
+                                    "tool": info.get("tool", ""),
+                                    "referenced_content": info.get("referenced_content", ""),
+                                    "filename": info.get("filename"),
+                                    "page_number": info.get("page_number"),
+                                    "link": info.get("link"),
+                                    "title": info.get("title"),
+                                    "broker": info.get("broker"),
+                                    "target_price": info.get("target_price"),
+                                    "investment_opinion": info.get("investment_opinion"),
+                                    "analysis_result": info.get("analysis_result", ""),
+                                    "content": info.get("content", "")
+                                }
+                                filtered_doc = {k: v for k, v in doc.items() if v not in [None, ""]}
+                                if filtered_doc:
+                                    docs.append(filtered_doc)
+                        
+                        final_result = {
+                            "answer": final_message.content,
+                            "docs": docs
+                        }
+            
+            logger.info("✅ 비동기 실행 완료 - 성공")
+            return final_result
+                    
+        except Exception as e:
+            logger.error(f"❌ 비동기 실행 중 오류 발생: {str(e)}")
+            return {
+                "status": "error",
+                "message": f"오류가 발생했습니다: {str(e)}",
+            }
+
+    async def _update_plan_status(self, plan: dict):
+        """계획 상태 업데이트"""
+        try:
+            # plan 데이터가 이미 올바른 형식인지 확인
+            plan_data = plan if isinstance(plan, list) else plan.get("plan", [])
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    'http://localhost:8000/api/task-progress',
+                    json={
+                        "type": "plan",
+                        "timestamp": datetime.now().isoformat(),
+                        "status": "planning",
+                        "plan": [
+                            {
+                                "tool": str(task.get("tool", "")),
+                                "description": str(task.get("description", task.get("args", ""))),
+                                "status": task.get("status", "pending")
+                            }
+                            for task in plan_data
+                        ]
+                    }
+                ) as response:
+                    if response.status != 200:
+                        logger.error("계획 상태 업데이트 실패")
+        except Exception as e:
+            logger.error(f"계획 상태 업데이트 중 오류: {str(e)}")
+
+    async def _update_execution_status(self, execution: dict):
+        """실행 상태 업데이트"""
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    'http://localhost:8000/api/task-progress',
+                    json={
+                        "type": "execution",
+                        "timestamp": datetime.now().isoformat(),
+                        "status": "running",
+                        "execution": execution
+                    }
+                ) as response:
+                    if response.status != 200:
+                        logger.error("실행 상태 업데이트 실패")
+        except Exception as e:
+            logger.error(f"실행 상태 업데이트 중 오류: {str(e)}")
+
+    # 기존 메서드들은 유지
     async def astream(self, query: str) -> AsyncGenerator[Dict[str, Any], None]:
         logger.info(f"📥 스트리밍 시작 - 쿼리: {query}")
-        event_handler = StreamingEventHandler()
         
         state = {
             "messages": [HumanMessage(content=query)],
@@ -202,18 +250,8 @@ class LLMCompiler:
         try:
             async for chunk in self.chain.astream(
                 state,
-                config={"callbacks": [event_handler]}
             ):
                 logger.debug(f"청크 수신: {str(chunk)[:200]}...")
-                
-                current_step = event_handler.get_current_step()
-                if current_step and current_step.get("show_in_chat"):
-                    logger.info(f"스트리밍 이벤트 전송: {current_step['type']}")
-                    yield {
-                        "type": "step",
-                        "content": current_step["content"],
-                        "step_type": current_step["type"]
-                    }
                 
                 if isinstance(chunk, dict) and "messages" in chunk:
                     final_message = chunk["messages"][-1]
@@ -222,67 +260,11 @@ class LLMCompiler:
                         yield {
                             "type": "final",
                             "content": final_message.content,
-                            "events": event_handler.events
                         }
         except Exception as e:
             logger.error(f"스트리밍 중 오류 발생: {str(e)}")
             raise
 
     def run(self, query: str) -> dict:
-        logger.info(f"📝 실행 시작 - 쿼리: {query}")
-        try:
-            event_handler = StreamingEventHandler()
-            
-            state = {
-                "messages": [HumanMessage(content=query)],
-                "key_information": [],
-            }
-            logger.debug(f"초기 상태 설정: {state}")
-            
-            result = self.chain.invoke(state, config={"callbacks": [event_handler]})
-            logger.debug(f"체인 실행 결과: {str(result)[:200]}...")
-            
-            final_message = result["messages"][-1]
-            
-            if isinstance(final_message, AIMessage):
-                docs = []
-                if "key_information" in result:
-                    for info in result["key_information"]:
-                        doc = {
-                            "tool": info.get("tool", ""),
-                            "referenced_content": info.get("referenced_content", ""),
-                            "filename": info.get("filename"),
-                            "page_number": info.get("page_number"),
-                            "link": info.get("link"),
-                            "title": info.get("title"),
-                            "broker": info.get("broker"),
-                            "target_price": info.get("target_price"),
-                            "investment_opinion": info.get("investment_opinion"),
-                            "analysis_result": info.get("analysis_result", ""),
-                            "content": info.get("content", "")
-                        }
-                        filtered_doc = {k: v for k, v in doc.items() if v not in [None, ""]}
-                        if filtered_doc:
-                            docs.append(filtered_doc)
-                
-                logger.info("✅ 실행 완료 - 성공")
-                return {
-                    "answer": final_message.content,
-                    "docs": docs if docs else [],
-                    "events": event_handler.events
-                }
-            else:
-                logger.error("❌ 실행 실패 - 잘못된 응답 형식")
-                return {
-                    "status": "error",
-                    "message": "응답 생성에 실패했습니다.",
-                    "events": event_handler.events
-                }
-                    
-        except Exception as e:
-            logger.error(f"❌ 실행 중 오류 발생: {str(e)}")
-            return {
-                "status": "error",
-                "message": f"오류가 발생했습니다: {str(e)}",
-                "events": event_handler.events if 'event_handler' in locals() else []
-            } 
+        """기존의 동기 실행 메서드는 유지"""
+        return asyncio.run(self.arun(query)) 

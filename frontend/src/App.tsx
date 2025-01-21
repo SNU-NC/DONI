@@ -30,6 +30,24 @@ interface PlanStep {
     status: 'pending' | 'running' | 'completed';
 }
 
+interface TaskProgress {
+    type: string;
+    status: string;
+    task_id?: string;
+    task_name?: string;
+    result?: any;
+    debug_info?: any;
+    timestamp: string;
+    task_count?: number;
+    results?: any[];
+    tool_type?: string;
+}
+
+interface TaskEvent {
+    type: string;
+    data: TaskProgress;
+}
+
 const typeIcons = {
     'analyst_report': '📊',
     'financial_report': '📑',
@@ -90,25 +108,38 @@ declare global {
 }
 
 const ThinkingMessage = memo(() => {
-    const [thinkingIndex, setThinkingIndex] = useState(0);
+    const [thinkingMessage, setThinkingMessage] = useState("");
 
     const thinkingMessages = [
-        "💡 주식투자는 장기적 관점이 중요해요",
-        "💡 투자 결정 전 항상 재무제표를 확인하세요",
-        "💡 시장 전체의 흐름을 파악하는 것이 중요해요",
-        "💡 질문 시, 원하는 기업과 주제, 연도를 명확히 하면 더 정확한 답변을 얻을 수 있어요",
-        "💡 현재 코스피 기업에 대해서 정보를 제공하고 있습니다. 업데이트를 기다려주세요 😉",
-        "데이터 수집 중... 📥",
-        "분석 중... 🔍",
-        "답변 생성 중... ✍️",
-        "마무리 중... 🎯",
- 
+        "한 번에 한 가지 질문을 하면 더 좋은 답변을 드릴 수 있어요!",
+        "정확한 기업명을 넣어 질문해주시면 더 좋은 답변을 드릴 수 있어요!",
+        "재무보고서, 애널리스트 보고서, 웹 중 어떤 정보를 참고할지 지정해주시면 거기서 찾아올게요!",
+        "알고 계셨나요? 흐린 날에는 주식 수익률이 하락한다는 연구가 있습니다!",
+        "주식 시장은 인내심이 없는 자로부터 인내심이 많은 자에게로 돈이 넘어가도록 설계되어 있다  - 워렌 버핏",
+        "저축과 투자의 첫 번째 목표는 인플레이션을 이기는 것이다. 여러분의 돈은 거꾸로 돌아가는 쳇바퀴에 있다.   - 피터 린치",
+        "개를 데리고 산책을 나갈 때 개가 주인보다 앞서갈 수는 있어도 주인을 떠날 수는 없다. 여기서 개는 주식 가격이고, 주인은 기업가치이다.  - 앙드레 코스톨라니",
+        "현명한 투자자는 비관주의자에게 주식을 사서 낙관주의자에게 판다. - 벤자민 그레이엄",
+        "저희가 제공하는 출처를 답변과 함께 보시면 더 정확한 정보를 얻으실 수 있습니다.",
+        "알고 계셨나요? DONI를 테스트하기 위해 만든 100여 개의 질문-정답 쌍은 전부 사람이 직접 만들었습니다.",
+        "알고 계셨나요? 어떤 기업은 매출이란 표현 대신 영업수익이란 표현을 사용합니다.",
+        "DONI는 KOSPI기업에 대한 검색에 최적화되어 있습니다.",
+        "알고 계셨나요? 네이버 인근에는 '동봉관'이라는 엄청난 맛집이 있습니다. 팀원 중 누군가는 프로젝트 기간 중 12회 방문했습니다.",
+        "SNU 9기 파이팅 ♥ ♥",
+        "알고 계셨나요? 기업이 자사주를 매입하면 주가가 상승하는 경향이 있지만, 장기적으로는 반드시 긍정적인 영향을 미치지는 않습니다.",
+        "알고 계셨나요? 미국에서는 IPO 첫날 주가가 크게 상승하는 것을 'IPO 팝(Pop)'이라고 부릅니다.",
+        "알고 계셨나요? 워런 버핏은 투자 결정을 내릴 때 '내가 이 기업의 전부를 산다면?'이라는 질문을 항상 먼저 한다고 합니다.",
+        "알고 계셨나요? 달러 강세는 종종 해외 매출 비중이 높은 기업에 부정적인 영향을 미칠 수 있습니다.",
+        "알고 계셨나요? 주식 리딩방은 투자자를 속이는 사기 수단으로 악용되는 경우가 많습니다."
     ];
 
     useEffect(() => {
         const interval = setInterval(() => {
-            setThinkingIndex((prev) => (prev + 1) % thinkingMessages.length);
-        }, 2000); // 2초마다 메시지 변경
+            const randomIndex = Math.floor(Math.random() * thinkingMessages.length);
+            setThinkingMessage(thinkingMessages[randomIndex]);
+        }, 2700);
+        
+        const initialIndex = Math.floor(Math.random() * thinkingMessages.length);
+        setThinkingMessage(thinkingMessages[initialIndex]);
         
         return () => clearInterval(interval);
     }, []);
@@ -119,7 +150,17 @@ const ThinkingMessage = memo(() => {
                 <img src="/component/imgs/robot_avatar.png" alt="AI 챗봇" />
             </div>
             <div className="message bot-message thinking">
-                {thinkingMessages[thinkingIndex]}
+                <div className="thinking-header">
+                    생각 중
+                    <div className="loading-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+                <div className="thinking-tip">
+                    Tip: {thinkingMessage}
+                </div>
             </div>
         </div>
     );
@@ -328,199 +369,350 @@ const InputComponent = memo(({ onSend, isThinking }: { onSend: (value: string) =
     );
 });
 
+// 도구 타입별 표시 이름 매핑
+const toolTypeIcons = {
+    'combined_financial_report_search': '📑 재무제표 검색',
+    'web_search': '🌐 웹 검색',
+    'math': '🔢 수식 계산',
+    'report_analysis': '📊 리포트 분석',
+    'stock_analysis': '📈 주가 분석',
+    'combined_analysis': '🔍 종합 분석',
+    'sector_analysis': '🏢 섹터 분석',
+    'market_data': '📊 시장 데이터',
+    'join': '🔗 데이터 결합',
+    '기타': '🔧 기타'
+};
+
+const TaskProgressDisplay = memo(({ taskEvents }: { taskEvents: TaskProgress[] }) => {
+    return (
+        <div className="task-progress-container">
+            <div className="task-events-list">
+                {taskEvents.map((event, index) => (
+                    <div key={`${event.timestamp}-${index}`} className={`task-event ${event.status}`}>
+                        <div className="task-event-header">
+                            <span className="task-type">
+                                {toolTypeIcons[event.tool_type as keyof typeof toolTypeIcons] || 
+                                 toolTypeIcons[event.task_name as keyof typeof toolTypeIcons]}
+                            </span>
+                            <span className={`task-status ${event.status}`}>
+                                {event.status === 'running' && '실행 중'}
+                                {event.status === 'completed' && '완료'}
+                                {event.status === 'error' && '오류'}
+                                {event.status === 'pending' && '대기 중'}
+                            </span>
+                        </div>
+                        <div className="task-timestamp">
+                            {new Date(event.timestamp).toLocaleTimeString()}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+});
+
 function App() {
     const [messages, setMessages] = useState<Message[]>([{
-        content: "안녕하세요! 금융 정보 검색 AI 챗봇입니다. 궁금하신 내용을 자유롭게 질문해 주세요.",
+        content: "안녕하세요! 궁금한 정보를 자유롭게 질문해주세요.",
         isUser: false,
         timestamp: new Date().toLocaleTimeString()
     }]);
-    const [references, setReferences] = useState<Reference[]>([]);
-    const [plans, setPlans] = useState<PlanStep[]>([]);
     const [isThinking, setIsThinking] = useState(false);
+    const [references, setReferences] = useState<Reference[]>([]);
+    const [planSteps, setPlanSteps] = useState<PlanStep[]>([]);
+    const [currentQuery, setCurrentQuery] = useState<string>("");
+    const [taskProgress, setTaskProgress] = useState<TaskProgress[]>([]);
+    const [isConnected, setIsConnected] = useState(false);
+    const wsRef = useRef<WebSocket | null>(null);
+    const [debugMessages, setDebugMessages] = useState<string[]>([]);
+    const [isFading, setIsFading] = useState(false);
+    const taskQueueRef = useRef<TaskProgress[]>([]);
+    const [taskEvents, setTaskEvents] = useState<TaskProgress[]>([]);
+    const [isDebugVisible, setIsDebugVisible] = useState(false);
 
-    // 태스크 진행 상황을 주기적으로 확인
-    useEffect(() => {
-        let intervalId: NodeJS.Timeout;
-        
-        if (isThinking) {
-            intervalId = setInterval(async () => {
-                try {
-                    const response = await fetch('http://localhost:8000/api/task-progress');
-                    const data = await response.json();
-                    console.log('Task Progress Data:', data); // 디버깅용 로그
-                    
-                    // plans 데이터 처리
-                    if (data.plans && data.plans.length > 0) {
-                        const latestPlan = data.plans[data.plans.length - 1];
-                        console.log('Latest Plan:', latestPlan); // 디버깅용 로그
-                        
-                        if (latestPlan.plan) {
-                            const newPlans = latestPlan.plan.map((task: any, index: number) => ({
-                                tool: task.tool || '알 수 없는 도구',
-                                description: task.description || JSON.stringify(task),
-                                status: task.status || 'pending'
-                            }));
-                            console.log('Processed Plans:', newPlans); // 디버깅용 로그
-                            setPlans(newPlans);
-                        }
-                    }
-
-                    // executions 데이터 처리
-                    if (data.executions && data.executions.length > 0) {
-                        const latestExecution = data.executions[data.executions.length - 1];
-                        console.log('Latest Execution:', latestExecution); // 디버깅용 로그
-                        
-                        // 실행 결과에 따라 plans 상태 업데이트
-                        setPlans(prevPlans => 
-                            prevPlans.map(plan => ({
-                                ...plan,
-                                status: 'completed'
-                            }))
-                        );
-                    }
-                } catch (error) {
-                    console.error('태스크 진행 상황 조회 중 오류:', error);
-                }
-            }, 1000); // 1초마다 확인
+    // 태스크 큐에 새로운 태스크 추가
+    const addToTaskQueue = useCallback((task: TaskProgress) => {
+        // task_id가 있는 경우에만 추가
+        if (task.task_id || task.type === 'execution' || task.type === 'execution_summary') {
+            taskQueueRef.current.push({
+                ...task,
+                tool_type: task.tool_type || task.task_name || '기타',
+                timestamp: task.timestamp || new Date().toISOString()
+            });
         }
+    }, []);
 
-        return () => {
-            if (intervalId) {
-                clearInterval(intervalId);
+    // 주기적으로 태스크 상태 업데이트 (100ms 간격)
+    useEffect(() => {
+        const updateInterval = setInterval(() => {
+            if (taskQueueRef.current.length > 0) {
+                setTaskProgress(prev => {
+                    const newTasks = [...prev];
+                    
+                    taskQueueRef.current.forEach(task => {
+                        // task_id가 있거나 execution 타입인 경우만 처리
+                        if (task.task_id || task.type === 'execution') {
+                            const existingIndex = newTasks.findIndex(t => t.task_id === task.task_id);
+                            if (existingIndex !== -1) {
+                                newTasks[existingIndex] = { 
+                                    ...newTasks[existingIndex], 
+                                    ...task,
+                                    status: task.status || newTasks[existingIndex].status
+                                };
+                            } else {
+                                newTasks.push(task);
+                            }
+                        }
+                    });
+                    
+                    // 상태별로 정렬
+                    const sortedTasks = newTasks.sort((a, b) => {
+                        if (a.task_id && b.task_id) {
+                            return parseInt(a.task_id) - parseInt(b.task_id);
+                        }
+                        return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+                    });
+                    
+                    taskQueueRef.current = []; // 큐 초기화
+                    return sortedTasks;
+                });
             }
-        };
-    }, [isThinking]);
+        }, 100);
 
-    const handleSendMessage = useCallback(async (inputValue: string) => {
-        const timestamp = new Date().toLocaleTimeString('ko-KR');
-        const newMessage: Message = {
-            content: inputValue,
-            isUser: true,
-            timestamp
-        };
+        return () => clearInterval(updateInterval);
+    }, []);
 
-        setMessages(prev => [...prev, newMessage]);
-        setIsThinking(true);
-        setPlans([]); // 새 질문이 시작될 때 계획 초기화
+    const clearPreviousChat = useCallback(() => {
+        setIsFading(true);
+        // 즉시 초기화
+        setReferences([]);
+        setPlanSteps([]);
+        setTaskProgress([]);
+        setDebugMessages([]);
+        taskQueueRef.current = []; // 태스크 큐도 초기화
         
+        // 페이드아웃 효과 후 페이드인
+        setTimeout(() => {
+            setIsFading(false);
+        }, 500);
+    }, []);
+
+    const handleSubmit = async (query: string) => {
+        if (!query.trim()) return;
+        
+        // 새로운 질문이 들어오면 모든 데이터 초기화
+        clearPreviousChat();
+        setCurrentQuery(query);
+        // 작업 진행 상황과 디버그 콘솔 초기화
+        setTaskEvents([]);
+        setDebugMessages([]);
+        setTaskProgress([]);
+        taskQueueRef.current = [];
+
+        const userMessage: Message = {
+            content: query,
+            isUser: true,
+            timestamp: new Date().toLocaleTimeString()
+        };
+
+        setMessages(prev => [...prev, userMessage]);
+        setIsThinking(true);
+
         try {
             const response = await fetch('http://localhost:8000/api/search', {
                 method: 'POST',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
                 },
-                mode: 'cors',
-                credentials: 'omit',
-                body: JSON.stringify({ query: inputValue })
+                body: JSON.stringify({ query })
             });
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
             const data = await response.json();
-            console.log('Search API 응답:', data);  // 디버깅용 로그
-            
-            setIsThinking(false);
-            
+
             if (data.error) {
-                console.error('API 오류:', data.message);
-                setMessages(prev => [...prev, {
-                    content: data.message,
+                const errorMessage: Message = {
+                    content: data.message || "죄송합니다. 오류가 발생했습니다.",
                     isUser: false,
-                    timestamp: new Date().toLocaleTimeString('ko-KR')
-                }]);
+                    timestamp: new Date().toLocaleTimeString()
+                };
+                setMessages(prev => [...prev, errorMessage]);
             } else {
-                setMessages(prev => [...prev, {
+                const botMessage: Message = {
                     content: data.answer,
                     isUser: false,
-                    timestamp: new Date().toLocaleTimeString('ko-KR')
-                }]);
+                    timestamp: new Date().toLocaleTimeString()
+                };
+                setMessages(prev => [...prev, botMessage]);
                 
-                if (data.docs && data.docs.length > 0) {
-                    console.log('참고 자료:', data.docs);
+                // 참고 자료가 있다면 업데이트
+                if (data.docs && Array.isArray(data.docs)) {
                     setReferences(data.docs);
                 }
             }
         } catch (error) {
-            console.error('API 요청 오류:', error);
-            setIsThinking(false);
-            setMessages(prev => [...prev, {
-                content: "죄송합니다. 서버 연결에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+            const errorMessage: Message = {
+                content: "서버와의 통신 중 오류가 발생했습니다.",
                 isUser: false,
-                timestamp: new Date().toLocaleTimeString('ko-KR')
-            }]);
+                timestamp: new Date().toLocaleTimeString()
+            };
+            setMessages(prev => [...prev, errorMessage]);
+        } finally {
+            setIsThinking(false);
         }
-    }, []);
+    };
+
+    // 디버그 메시지 추가 함수
+    const addDebugMessage = (message: string) => {
+        setDebugMessages(prev => [...prev, `${new Date().toISOString()} - ${message}`]);
+        console.log(message);
+    };
+
+    useEffect(() => {
+        const connectWebSocket = () => {
+            // 기존 웹소켓이 있다면 닫기
+            if (wsRef.current) {
+                wsRef.current.close();
+            }
+
+            const ws = new WebSocket('ws://localhost:8000/ws/task-progress');
+            wsRef.current = ws;
+
+            ws.onopen = () => {
+                setIsConnected(true);
+                addDebugMessage('WebSocket 연결됨');
+            };
+
+            ws.onmessage = (event) => {
+                const data: TaskEvent = JSON.parse(event.data);
+                addDebugMessage(`새로운 태스크 이벤트 수신: ${JSON.stringify(data)}`);
+                
+                if (data.type === 'task_progress') {
+                    const taskData = data.data;
+                    
+                    // 기타 타입이면 무시
+                    if (taskData.tool_type === '기타' || taskData.task_name === '기타') {
+                        return;
+                    }
+                    
+                    // taskEvents 상태 업데이트
+                    setTaskEvents(prev => {
+                        // 동일한 task_id와 tool_type을 가진 이벤트 찾기
+                        const existingEventIndex = prev.findIndex(
+                            event => event.task_id === taskData.task_id && 
+                                    event.tool_type === taskData.tool_type
+                        );
+
+                        // 이미 존재하는 이벤트라면
+                        if (existingEventIndex !== -1) {
+                            // 상태가 같으면 무시
+                            if (prev[existingEventIndex].status === taskData.status) {
+                                return prev;
+                            }
+                            
+                            // 상태가 다르면 업데이트
+                            const newEvents = [...prev];
+                            newEvents[existingEventIndex] = {
+                                ...newEvents[existingEventIndex],
+                                status: taskData.status,
+                                timestamp: taskData.timestamp
+                            };
+                            return newEvents;
+                        }
+                        
+                        // 새로운 이벤트라면 추가
+                        return [...prev, taskData];
+                    });
+                }
+            };
+
+            ws.onerror = (error) => {
+                addDebugMessage(`WebSocket 오류: ${error}`);
+                setIsConnected(false);
+            };
+
+            ws.onclose = () => {
+                setIsConnected(false);
+                addDebugMessage('WebSocket 연결 종료');
+                // 재연결 시도
+                setTimeout(connectWebSocket, 3000);
+            };
+        };
+
+        connectWebSocket();
+
+        // 컴포넌트 언마운트 시 웹소켓 연결 종료
+        return () => {
+            if (wsRef.current) {
+                wsRef.current.close();
+                wsRef.current = null;
+            }
+        };
+    }, [currentQuery]); // currentQuery가 변경될 때마다 웹소켓 재연결
 
     return (
         <div className="app-container">
             <div className="sections-container">
+                <section className="task-progress-section">
+                    <div className="section-header">
+                        <h2>🔄 진행 상황</h2>
+                    </div>
+                    <TaskProgressDisplay taskEvents={taskEvents} />
+                </section>
+
                 <section className="chat-section">
                     <div className="section-header">
                         <h2>💬 대화</h2>
                     </div>
                     <ChatMessages messages={messages} isThinking={isThinking} />
                 </section>
-                
-                <section className="planning-section">
-                    <div className="section-header">
-                        <h2>🤔 생각의 과정</h2>
-                    </div>
-                    <div className="planning-container">
-                        <div className="debug-info">
-                            <pre>{JSON.stringify(plans, null, 2)}</pre>
-                        </div>
-                        {plans.map((plan, idx) => (
-                            <div key={idx} className={`plan-step ${plan.status}`}>
-                                <div className="plan-number">{idx + 1}</div>
-                                <div className="plan-content">
-                                    <div className="plan-tool">{plan.tool}</div>
-                                    <div className="plan-description">{plan.description}</div>
-                                </div>
-                                <div className="plan-status">
-                                    {plan.status === 'pending' && '⏳'}
-                                    {plan.status === 'running' && '🔄'}
-                                    {plan.status === 'completed' && '✅'}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </section>
-                
+
                 <section className="reference-section">
                     <div className="section-header">
-                        <h2>📚 참고 자료</h2>
+                        <div className="header-with-button">
+                            <h2>📚 참고 자료</h2>
+                            <button 
+                                className="debug-toggle-button"
+                                onClick={() => setIsDebugVisible(!isDebugVisible)}
+                            >
+                                {isDebugVisible ? '🔽 디버그 숨기기' : '🔼 디버그 보기'}
+                            </button>
+                        </div>
                     </div>
-                    <div className="references-container">
-                        {references.map((ref, idx) => {
-                            const displayType = getDisplayType(ref);
-                            const displayTitle = getDisplayTitle(ref);
-                            const {mainContent, details} = getDisplayContent(ref);
-                            
-                            return (
+                    <div className="reference-content-wrapper">
+                        <div className={`references-container ${isFading || isThinking ? 'fade-out' : 'fade-in'}`}>
+                            {references.map((ref, idx) => (
                                 <div key={idx} className="reference-item">
                                     <div className="reference-title">
-                                        {typeIcons[displayType as keyof typeof typeIcons]} {displayTitle}
+                                        {typeIcons[getDisplayType(ref) as keyof typeof typeIcons]} {getDisplayTitle(ref)}
                                         {ref.page_number && ` (p.${ref.page_number})`}
                                     </div>
-                                    {details && <div className="reference-details">{details}</div>}
-                                    <div className="reference-content">{mainContent}</div>
+                                    {ref.broker && <div className="reference-details">{ref.broker}</div>}
+                                    <div className="reference-content">{ref.referenced_content || ref.content}</div>
                                     {ref.link && (
                                         <a href={ref.link} target="_blank" rel="noopener noreferrer" className="reference-link">
                                             원문 보기
                                         </a>
                                     )}
                                 </div>
-                            );
-                        })}
+                            ))}
+                        </div>
+                        {isDebugVisible && (
+                            <div className="debug-console">
+                                <h3>디버그 콘솔</h3>
+                                <div className="debug-messages">
+                                    {debugMessages.map((message, index) => (
+                                        <div key={index} className="debug-message">
+                                            {message}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </section>
             </div>
             
-            <InputComponent onSend={handleSendMessage} isThinking={isThinking} />
+            <InputComponent onSend={handleSubmit} isThinking={isThinking} />
         </div>
     );
 }

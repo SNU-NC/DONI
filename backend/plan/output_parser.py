@@ -10,6 +10,9 @@ from typing import (
     Tuple,
     Union,
 )
+import requests
+from datetime import datetime
+import json
 
 from langchain_core.exceptions import OutputParserException
 from langchain_core.messages import BaseMessage
@@ -26,7 +29,9 @@ END_OF_PLAN = "<END_OF_PLAN>"
 
 
 ### Helper functions
-
+import logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 def _ast_parse(arg: str) -> Any:
     try:
@@ -140,7 +145,43 @@ class LLMCompilerPlanParser(BaseTransformOutputParser[dict], extra="allow"):
         config: RunnableConfig | None = None,
         **kwargs: Any | None,
     ) -> Iterator[Task]:
-        yield from self.transform([input], config, **kwargs)
+        logger.debug(f"Stream 시작 - 입력[20000916]: {input}")
+        tasks = []
+        for task in self.transform([input], config, **kwargs):
+            tasks.append(task)
+            logger.debug(f"생성된 Task[20000916]: {task}")
+            
+            # 계획 데이터 생성 및 전송
+            if len(tasks) == 1:  # 첫 번째 태스크가 생성되었을 때만 전체 계획 전송
+                plan_data = {
+                    "type": "plan",
+                    "timestamp": datetime.now().isoformat(),
+                    "status": "pending",
+                    "plan": [
+                        {
+                            "tool": str(t.get("tool", "Unknown Tool")),
+                            "description": t.get("args", {}),
+                            "status": "pending"
+                        }
+                        for t in tasks
+                    ],
+                    "query": str(input),
+                    "raw_tasks": [dict(t) for t in tasks]  # Task 객체를 dict로 변환
+                }
+                
+                try:
+                    response = requests.post(
+                        'http://localhost:8000/api/task-progress',
+                        json=plan_data,
+                        timeout=1
+                    )
+                    if response.status_code != 200:
+                        logger.error("계획 데이터 전송 실패")
+                except Exception as e:
+                    logger.error(f"계획 데이터 전송 중 오류 발생: {e}")
+            
+            yield task
+        logger.debug("Stream 종료[20000916]")
 
     def ingest_token(
         self, token: str, buffer: List[str], thought: Optional[str]

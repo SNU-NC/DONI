@@ -9,6 +9,8 @@ from langchain_core.runnables import (
 )
 from typing_extensions import TypedDict
 import logging
+import requests
+import json
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -195,8 +197,9 @@ def schedule_pending_task(task, observations, retry_after: float = 0.2):
 @as_runnable
 def schedule_tasks(scheduler_input: SchedulerInput) -> List[FunctionMessage]:
     tasks = scheduler_input["tasks"]
-    logger.debug(f"Received tasks: {len(tasks)} tasks")
-    
+    logger.debug(f"Received tasks: {tasks}")
+    logger.debug(f"Received tasks: {len(tasks)} tasks")  
+
     args_for_tasks = {}
     messages = scheduler_input["messages"]
     observations = _get_observations(messages)
@@ -205,6 +208,28 @@ def schedule_tasks(scheduler_input: SchedulerInput) -> List[FunctionMessage]:
     futures = []
     retry_after = 0.25
 
+    def serialize_tool(tool):
+        """도구 객체를 직렬화 가능한 형태로 변환"""
+        if isinstance(tool, str):
+            return tool
+        try:
+            return {
+                "name": tool.name if hasattr(tool, "name") else tool.__class__.__name__,
+                "type": tool.__class__.__name__
+            }
+        except:
+            return str(tool)
+
+    def serialize_result(result):
+        """결과를 직렬화 가능한 형태로 변환"""
+        if isinstance(result, (str, int, float, bool, type(None))):
+            return result
+        if isinstance(result, dict):
+            return {k: serialize_result(v) for k, v in result.items()}
+        if isinstance(result, (list, tuple)):
+            return [serialize_result(item) for item in result]
+        return str(result)
+
     with ThreadPoolExecutor() as executor:
         for task in tasks:
             try:
@@ -212,10 +237,38 @@ def schedule_tasks(scheduler_input: SchedulerInput) -> List[FunctionMessage]:
                 logger.debug(f"Task tool type: {type(task.get('tool'))}")
                 
                 deps = task["dependencies"]
+                tool = task["tool"]
+                serialized_tool = serialize_tool(tool)
+                
                 task_names[task["idx"]] = (
-                    task["tool"] if isinstance(task["tool"], str) else task["tool"].name
+                    tool if isinstance(tool, str) else getattr(tool, "name", tool.__class__.__name__)
                 )
                 args_for_tasks[task["idx"]] = task["args"]
+                
+                # 각 태스크 실행 직후 결과 전송
+                execution_data = {
+                    "type": "execution",
+                    "timestamp": datetime.now().isoformat(),
+                    "status": "running",
+                    "task_id": task["idx"],
+                    "task_name": task_names[task["idx"]],
+                    "tool": serialized_tool,
+                    "args": serialize_result(args_for_tasks[task["idx"]]),
+                    "debug_info": {
+                        "task_type": str(type(tool)),
+                        "dependencies": deps
+                    }
+                }
+                
+                try:
+                    response = requests.post(
+                        'http://localhost:8000/api/task-progress',
+                        json=execution_data,
+                        timeout=0.5
+                    )
+                    logger.debug(f"Task progress update response: {response.status_code}")
+                except Exception as e:
+                    logger.error(f"Task progress update failed: {e}")
                 
                 if deps and (any([dep not in observations for dep in deps])):
                     logger.debug(f"Task {task['idx']} has pending dependencies: {deps}")
@@ -226,18 +279,56 @@ def schedule_tasks(scheduler_input: SchedulerInput) -> List[FunctionMessage]:
                     )
                 else:
                     logger.debug(f"Executing task {task['idx']} immediately")
-                    schedule_task.invoke(dict(task=task, observations=observations))
+                    result = schedule_task.invoke(dict(task=task, observations=observations))
+                    
+                    # 태스크 완료 후 결과 전송
+                    execution_data.update({
+                        "status": "completed",
+                        "result": serialize_result(observations.get(task["idx"])),
+                        "debug_info": {
+                            **execution_data["debug_info"],
+                            "result_type": str(type(result)) if result else None,
+                            "observation_keys": list(observations.keys())
+                        }
+                    })
+                    
+                    try:
+                        response = requests.post(
+                            'http://localhost:8000/api/task-progress',
+                            json=execution_data,
+                            timeout=0.5
+                        )
+                        logger.debug(f"Task completion update response: {response.status_code}")
+                    except Exception as e:
+                        logger.error(f"Task completion update failed: {e}")
+                    
             except Exception as e:
                 logger.error(f"Failed to process task {task.get('idx')}", exc_info=True)
+                # 에러 상황도 전송
+                error_data = {
+                    **execution_data,
+                    "status": "error",
+                    "error": str(e),
+                    "error_type": e.__class__.__name__
+                }
+                try:
+                    requests.post(
+                        'http://localhost:8000/api/task-progress',
+                        json=error_data,
+                        timeout=0.5
+                    )
+                except:
+                    pass
                 
         wait(futures)
-    print("observations")
+    
     try:
         logger.debug("Creating tool messages")
         new_observations = {
             k: (task_names[k], args_for_tasks[k], observations[k])
             for k in sorted(observations.keys() - originals)
         }
+        
         # 태스크 결과 저장
         task_results = []
         for k, (name, task_args, obs) in new_observations.items():
@@ -245,13 +336,12 @@ def schedule_tasks(scheduler_input: SchedulerInput) -> List[FunctionMessage]:
                 "tool_name": name,
                 "task_id": str(k),
                 "timestamp": datetime.now().isoformat(),
-                "result": obs,
+                "result": serialize_result(obs),
                 "metadata": {
-                    "arguments": task_args,
-                    # 도구별 특수 메타데이터 추가 가능
+                    "arguments": serialize_result(task_args),
                 }
             })
-        
+            
         tool_messages = [
             FunctionMessage(
                 name=name,
@@ -261,8 +351,30 @@ def schedule_tasks(scheduler_input: SchedulerInput) -> List[FunctionMessage]:
             )
             for k, (name, task_args, obs) in new_observations.items()
         ]
+        
         logger.debug(f"Created {len(tool_messages)} tool messages")
-        return tool_messages , task_results
+        
+        # 최종 결과 전송
+        final_data = {
+            "type": "execution_summary",
+            "timestamp": datetime.now().isoformat(),
+            "status": "completed",
+            "task_count": len(task_results),
+            "results": task_results
+        }
+        
+        try:
+            requests.post(
+                'http://localhost:8000/api/task-progress',
+                json=final_data,
+                timeout=0.5
+            )
+        except Exception as e:
+            logger.error(f"Final results update failed: {e}")
+            
+        return tool_messages, task_results
+        
     except Exception as e:
         logger.error("Failed to create tool messages", exc_info=True)
+        return [], []  # 에러 발생 시 빈 리스트 반환
   
